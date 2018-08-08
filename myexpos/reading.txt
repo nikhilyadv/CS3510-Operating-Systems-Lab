@@ -1,0 +1,38 @@
+Stage - 1
+	Just installation
+Stage - 2
+	The downloaded expos package is machine simulator. It has a processor, memory and disk.
+	It is bare machine. It just has boot ROM.
+	3 support tools -
+						1) 2 * compliers
+						2) 1 * disk interface -> xfs-interface 
+	Disk has 512 blocks, each capable of storing 512 words.
+	The eXpFS logical file system comprises of files organized in a single directory called the root.
+	Associated with each eXpFS file there are three attributes - name, size and type, each attribute being one word long.
+	There are three types of eXpFS files - the root, data files and executable files. Each file in eXpFS has an entry in the root called its root entry.
+		1) Root file - The root file has the name root and contains meta-data about the files stored in the file system. For each file stored in eXpFS, the root file stores three words of information - file name, file-size and file-type. Operations allowed - Open, Close, Read and Seek.
+		2) Data file - A data file is a sequence of words. Operations allowed - Create, Delete, Open, Close, Read, Write, Seek.
+		3) Executable file - These contain executable code for programs that can be loaded and run by the operating system. eXpFS specification does not allow executable files to be created by application programs.
+	The eXpFS format specifies that each data/executable file can span across at most four data blocks, and that the index to these blocks along with the name and the size of the file must be stored in a pre-define area of the disk called the Inode table.
+	The inode table is stored in disk blocks 3 and 4. The Inode table is stored in the disk and has an entry for each file present in the disk.
+	Each Inode table entry stores the name, size, type and data block numbers of a file stored in the disk.
+	Entries in inode and root table shoulde match.
+--->Q. Why inode and root tables?
+	A. Inode table is a data structure which is accessible only in Kernel mode, whereas Root file is accessible both in Kernel and User mode. This enables the user to search for a file from an application program itself by reading the Root file.
+	./xfs-interface -> to xfs-interface.
+	fdisk -> to format.
+	The first 69 blocks (blocks 0 to 68) are reserved for Disk Structures, OS routines, Shell Code, Idle Code and INIT program (see Disk Organization). Hence it is marked as 1 (used) and the remaining entries for blocks 69 to 511 are 0 (unused).
+	Usertable - username and enycrpted password.
+	rm <filename> -> to remove file.
+	Two contiguous memory words are necessary to store each XSM instruction.
+	Machine Organisation 
+		Processor
+			The processor has two fundamental modes of operation - privileged execution mode and the unprivileged execution mode. A program executing in the privileged mode can execute any XSM instruction and has the full view of the memory and the disk. A program executing in the unprivileged mode has access only to a restricted machine model called the XSM virtual machine.
+		Registers and Ports
+			The XSM architecture maintains 29 registers, each capable of storing a word.
+				Unprivileged - R0-R19, BP, SP, IP
+		Memory
+			The memory is organized as a sequence of pages. Each page is a sequence of 512 words. The total number of memory pages available is 128. Thus there are in total 512 x 128 = 65536 words of storage. The memory is word addressable.
+		Disk
+			The disk is organized as a sequence of 512 blocks. Each block is a sequence of 512 words. Thus there are a total of 512x512=262144 words of secondary storage.The disk is block accessible and not word accessible. This means that a word within a block can be accessed individually only after transferring the block into memory and then accessing the corresponding word from the memory.
+Stage - 3

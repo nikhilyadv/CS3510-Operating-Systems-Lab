@@ -1,1 +1,1 @@
-export home="/media/tyrion/3A5C8F055C8EBAE1/IIT_PALAKKAD/Sem-5/CS3510-Operating-Systems-Lab/myexpos"
+export home=/media/tyrion/3A5C8F055C8EBAE1/IIT_PALAKKAD/Sem-5/CS3510-Operating-Systems-Lab/myexpos

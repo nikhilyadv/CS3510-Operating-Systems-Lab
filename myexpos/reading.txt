@@ -36,3 +36,16 @@ Stage - 2
 		Disk
 			The disk is organized as a sequence of 512 blocks. Each block is a sequence of 512 words. Thus there are a total of 512x512=262144 words of secondary storage.The disk is block accessible and not word accessible. This means that a word within a block can be accessed individually only after transferring the block into memory and then accessing the corresponding word from the memory.
 Stage - 3
+	Devices -
+		1) Memory - 512 * 128. Word addressable.
+		2) Disk - 512 * 512. Block addressable. Loaded into memory then used.
+		3) I/O console -
+		4) Timer -
+		5) Disk Controller -
+	ROM is stored on the first page of memory and is hard coded.
+	Power on -> privileged mode -> register initialized to zero -> fetch-execute cycle.
+	When the machine is just powered on, IP value is 0. Hence, the first instruction will be fetched from memory locations 0 and 1. The XSM machine has a boot ROM containing just two instructions:
+	Locations 	Intruction 					Meaning
+	    0		 LOADI 1,0			Load contents of disk block 0 to memory page 1
+	    2		 JMP 512			Change IP value to 512
+	

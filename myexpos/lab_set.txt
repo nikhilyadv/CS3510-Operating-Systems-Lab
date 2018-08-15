@@ -1,1 +1,1 @@
-export home=""
+export home=/home/111601013/CS3510-Operating-Systems-Lab/myexpos

@@ -25,16 +25,16 @@ Stage - 2
 	Usertable - username and enycrpted password.
 	rm <filename> -> to remove file.
 	Two contiguous memory words are necessary to store each XSM instruction.
-	Machine Organisation 
-		Processor
+	Machine Organisation -
+		Processor -
 			The processor has two fundamental modes of operation - privileged execution mode and the unprivileged execution mode. A program executing in the privileged mode can execute any XSM instruction and has the full view of the memory and the disk. A program executing in the unprivileged mode has access only to a restricted machine model called the XSM virtual machine.
-		Registers and Ports
+		Registers and Ports -
 			The XSM architecture maintains 29 registers, each capable of storing a word.
 				Unprivileged - R0-R19, BP, SP, IP
-		Memory
+		Memory -
 			The memory is organized as a sequence of pages. Each page is a sequence of 512 words. The total number of memory pages available is 128. Thus there are in total 512 x 128 = 65536 words of storage. The memory is word addressable.
-		Disk
-			The disk is organized as a sequence of 512 blocks. Each block is a sequence of 512 words. Thus there are a total of 512x512=262144 words of secondary storage.The disk is block accessible and not word accessible. This means that a word within a block can be accessed individually only after transferring the block into memory and then accessing the corresponding word from the memory.
+		Disk -
+			The disk is organized as a sequence of 512 blocks. Each block is a sequence of 512 words. Thus there are a total of 512 x 512 = 262144 words of secondary storage.The disk is block accessible and not word accessible. This means that a word within a block can be accessed individually only after transferring the block into memory and then accessing the corresponding word from the memory.
 Stage - 3
 	Devices -
 		1) Memory - 512 * 128. Word addressable.
@@ -48,4 +48,30 @@ Stage - 3
 	Locations 	Intruction 					Meaning
 	    0		 LOADI 1,0			Load contents of disk block 0 to memory page 1
 	    2		 JMP 512			Change IP value to 512
-	
+Stage - 4
+	SPL
+Stage - 5
+	breakpoint -> spl
+	./xsm --debug
+	reg or r -> show register values
+	mem <page number> or m <page number> ->show memory page
+	s -> step<page number>
+	c -> continue
+	v <memory location> -> show memory location 
+Stage - 6
+	For unprivileged instruction all addressess are treated as logical addressess. They are first converted into physical address using address translation mechanism.
+	PTBR -> Page table base register // setable privileged mode only.
+	PTLR -> Page table length register //10 by default
+	Every user mode program has an associated page table which maps its virtual address space to machine's physical address space.
+	Each page table entry for a logical page is of 2 words. 1st word is physical page number in the memory where the logical page is actually loaded. 2nd word stores a sequence of flag buts storing information reagarding whether the page is - valid/invalid , read only / read and write , has been reference in the user mode after being set to valid , dirt bit.
+	Steps ->
+		1) find logical page number and offset
+			#lpageno = (laddress/512)
+			#offset = (laddress%512)
+		2) find physical page number
+			#pageno = (ptbr + 2*lpageno);
+		3) fund physical page address
+			#ppageno = 512 * #pageno
+		4) physical address = physical page address + offset
+			#paddress = #ppageno + #offset
+	The eXpOS design stipulates that the INIT program must be stored in blocks 7 and 8 of the XSM disk.

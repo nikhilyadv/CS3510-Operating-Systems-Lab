@@ -93,4 +93,5 @@ Stage - 7
 			2. Code
 		The first eight words of an executable file are reserved for the header which describes the features of file. The structure of the header is :
 		XMAGIC - Entry point - Text Size - Data Size - Heap Size - Stack size - Library Flag - Unused
-		
+Stage - 8
+	Timer -> (--timer 2 means that after every instrucion it will give timer)

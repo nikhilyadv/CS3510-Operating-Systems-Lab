@@ -75,3 +75,22 @@ Stage - 6
 		4) physical address = physical page address + offset
 			#paddress = #ppageno + #offset
 	The eXpOS design stipulates that the INIT program must be stored in blocks 7 and 8 of the XSM disk.
+	INT 10 -> This interrupt handler is responsible for graceful termination of the user program.
+	Exception handler ->  The machine may raise an exception if it encounters any unexpected events like illegal instruction, invalid address, page table entry for a logical page not set valid etc.
+Stage - 7
+	Application Binary Interface (ABI) -
+		An application binary interface (ABI) is the interface between a user program and the kernel.
+		The eXpOS ABI defines the following:
+			The machine model 
+			A logical division of the memory address space into regions 
+			The file format
+			A low level system call interface 
+			The low level runtime library interface
+		First 2 pages for library next 2 for heap next 4 for code and last 2 for stack.
+		Executable files in eXpOS must be in the XEXE format as eXpOS executes only files of such format.
+		An XEXE executable file in eXpOS consists of two parts:
+			1. Header
+			2. Code
+		The first eight words of an executable file are reserved for the header which describes the features of file. The structure of the header is :
+		XMAGIC - Entry point - Text Size - Data Size - Heap Size - Stack size - Library Flag - Unused
+		

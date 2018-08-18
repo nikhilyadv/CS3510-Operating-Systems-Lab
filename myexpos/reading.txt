@@ -95,3 +95,9 @@ Stage - 7
 		XMAGIC - Entry point - Text Size - Data Size - Heap Size - Stack size - Library Flag - Unused
 Stage - 8
 	Timer -> (--timer 2 means that after every instrucion it will give timer)
+Stage - 9
+	Kernel stack used to store contents of registers when interupt occurs.
+	Backup and Restore instructions.
+	Need to store its value in process table.
+	user stack stores IP+2 and then user mode is changed to kernel mode and then control is transfered to interrut service routine or exception handler, which in turns switches from user stack to kernel stack, saves the values of current machine register in kernel stack and then run interupt cod. After completing that it restores value of machine register,set the value of stack pointer to the top of user stack. Finally transfer control back to user process.
+	

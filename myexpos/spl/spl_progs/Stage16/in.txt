@@ -1,0 +1,6 @@
+load --module 0 ../spl/spl_progs/Stage16/mod0.xsm
+load --module 4 ../spl/spl_progs/Stage16/mod4.xsm
+load --module 7 ../spl/spl_progs/Stage16/mod7.xsm
+load --int=6 ../spl/spl_progs/Stage16/int6.xsm
+load --int=console ../spl/spl_progs/Stage16/consoleinterupt.xsm
+load --init ../expl/assemblycode.xsm

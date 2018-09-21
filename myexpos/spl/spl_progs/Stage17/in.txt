@@ -1,0 +1,5 @@
+load --module 1 ../spl/spl_progs/Stage17/mod1.xsm
+load --module 2 ../spl/spl_progs/Stage17/mod2.xsm
+load --module 7 ../spl/spl_progs/Stage17/mod7.xsm
+load --int=9 ../spl/spl_progs/Stage17/int9.xsm
+load --init ../expl/assemblycode.xsm

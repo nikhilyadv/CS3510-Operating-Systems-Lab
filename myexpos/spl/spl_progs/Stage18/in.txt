@@ -1,0 +1,8 @@
+load --module 0 ../spl/spl_progs/Stage18/mod0.xsm
+load --module 1 ../spl/spl_progs/Stage18/mod1.xsm
+load --module 2 ../spl/spl_progs/Stage18/mod2.xsm
+load --module 4 ../spl/spl_progs/Stage18/mod4.xsm
+load --module 7 ../spl/spl_progs/Stage18/mod7.xsm
+load --int=9 ../spl/spl_progs/Stage18/int9.xsm
+load --int=disk ../spl/spl_progs/Stage18/diskinterrupt.xsm
+load --init ../expl/assemblycode.xsm

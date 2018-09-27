@@ -3,14 +3,12 @@ if (functionNum == 1) then			//Get Free Page
 	[SYSTEM_STATUS_TABLE + 3] = [SYSTEM_STATUS_TABLE + 3] + 1;	//wait mem count 
 	while ([SYSTEM_STATUS_TABLE + 2] == 0) do
 		[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 4] = WAIT_MEM;
-		multipush(R1);
 		call MOD_5;
-		multipop(R1);
 	endwhile;
 	[SYSTEM_STATUS_TABLE + 2] = [SYSTEM_STATUS_TABLE + 2] - 1; 
 	[SYSTEM_STATUS_TABLE + 3] = [SYSTEM_STATUS_TABLE + 3] - 1;
 	alias counter R0;
-	counter = 0;
+	counter = 76;
 	while (counter < 128) do
 		if ([MEMORY_FREE_LIST + counter] == 0) then
 			[MEMORY_FREE_LIST + counter] = 1;
@@ -26,7 +24,7 @@ if (functionNum == 2) then			//Release Page
 		[SYSTEM_STATUS_TABLE + 2] = [SYSTEM_STATUS_TABLE + 2] + 1;
 	endif;
 	alias counter R3;
-	counter = 0;
+	counter = 1;
 	while (counter < 16) do
 		if ([PROCESS_TABLE + (counter * 16) + 4] == WAIT_MEM) then
 			[PROCESS_TABLE + (counter * 16) + 4] = READY;
@@ -35,10 +33,10 @@ if (functionNum == 2) then			//Release Page
 	endwhile;
 	return;
 endif;
-if (functionNum == 4) then			//Release Page
+if (functionNum == 4) then			//Release Block
 	alias BlockNum R2;
 	alias pid R3;
-	[DISK_FREE_LIST+BlockNum] = 0;
+	[DISK_FREE_LIST+BlockNum] = [DISK_FREE_LIST+BlockNum]-1;
 	return;
 endif;
 if (functionNum == 5) then			//Get Code Page
@@ -50,8 +48,8 @@ if (functionNum == 5) then			//Get Code Page
 		index = 4;
 		while(index < 8) do
 			if ([DISK_MAP_TABLE + counter*10 + index] == BlockNum) then
-				if ([PAGE_TABLE_BASE + counter*10 + index*2 + 1] == "0100" || [PAGE_TABLE_BASE + counter*10 + index*2 + 1] == "1100") then		//checl if valid
-					R0 = [PAGE_TABLE_BASE + counter*10 + index*2];
+				if ([PAGE_TABLE_BASE + counter*20 + index*2 + 1] == "0100" || [PAGE_TABLE_BASE + counter*20 + index*2 + 1] == "1100") then		//check if valid
+					R0 = [PAGE_TABLE_BASE + counter*20 + index*2];
 					[MEMORY_FREE_LIST + R0] = [MEMORY_FREE_LIST + R0] + 1; //Memory free list
 					return;
 				endif;

@@ -17,7 +17,7 @@
     int result;
     FILE * fp;
     extern FILE *yyin;
-    extern int yylineno;
+    extern int yylineno, lineno;
     struct Fieldlist *ftemp;
     struct Typetable *declarationType ,*FdeclarationType,*functype,*temp1,*temp2;
     struct Gsymbol *Gtemp;
@@ -95,11 +95,11 @@
 %%
 program : TypeDefBlock gdeclaration fdeflist mainblock {
 			                                            fclose(intermediate);
-			                                            exit(1);
+			                                            //exit(0);
                         								}
         | TypeDefBlock gdeclaration mainblock    {
 		                                            fclose(intermediate);
-		                                            exit(1);
+		                                            //exit(1);
                                     			 }
         ;
 
@@ -762,7 +762,7 @@ Expr : Expr PLUS Expr       {
 
 void yyerror(char const *s) 
 { 
-    printf("yyerror  %s\n",s); 
+    printf("%d: %s\n",lineno,s); 
     return ;
 } 
 
@@ -776,12 +776,22 @@ int main(int argc,char* argv[])
     TInstall("void",0,NULL);
     TInstall("dummy",0,NULL); // This is for creating the fieldlist in case of udt 
     
-    if(argc > 1)
+    if (argc<2)
+    {
+        printf("Please provide an input filename\n");
+        exit(1);
+    }
+    else
     {
         fp = fopen(argv[1],"r");
-        if(fp)
+        if(!fp)
+        {
+            printf("Invalid input file specified\n");
+            exit(1);
+        }
+        else
             yyin = fp;
     }    
     yyparse(); 
-    return 1; 
+    return 0; 
 }

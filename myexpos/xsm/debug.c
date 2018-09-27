@@ -91,7 +91,7 @@ debug_watch_test (int mem_min, int mem_max)
 
 	for (i = 0; i < _db_status.wp_size; ++i)
 	{
-		if (mem_min <= _db_status.wp[i] && _db_status.wp[i] <= mem_max)
+		if (mem_min == _db_status.wp[i] || _db_status.wp[i] == mem_max)
 		{
 			return i;
 		}
@@ -114,13 +114,13 @@ debug_next_step (int curr_ip)
 	_db_status.ip = curr_ip;
 
 	machine_get_mem_access (&mem_low, &mem_high);
-
+	
 	if (mem_low > 0)
 		wp = debug_watch_test(mem_low, mem_high);
 
-	if (wp > 0)
+	if (wp >= 0)
 	{
-		printf ("Watchpoint at %d has triggered the debugger.\n", _db_status.wp[wp]);
+		printf ("Watchpoint at %d has been triggered.\n", _db_status.wp[wp]);
 		_db_status.state = ON;
 	}
 
@@ -136,7 +136,7 @@ int
 debug_show_interface ()
 {
 	char command[DEBUG_COMMAND_LEN];
-	int done = FALSE;
+	int done = FALSE, addr;
 	char next_instr[DEBUG_STRING_LEN];
 
 	if (_db_status.skip > 0)
@@ -147,9 +147,21 @@ debug_show_interface ()
 		return TRUE;
 	}
 
-	memory_retrieve_raw_instr (next_instr, machine_translate_address(_db_status.ip,FALSE));
+	addr = machine_translate_address(_db_status.ip, FALSE, DEBUG_FETCH);
+	if(addr >= 0)
+		memory_retrieve_raw_instr (next_instr, addr);
+	else
+		next_instr[0] = '\0';
 
-	printf ("Next instruction to execute: %s\n", next_instr);
+	printf("Next instruction to execute: %s\n", next_instr);
+	switch(machine_get_mode()){
+		case PRIVILEGE_KERNEL:
+			printf("Mode: KERNEL \t IP: %d\n", _db_status.ip);
+			break;
+		case PRIVILEGE_USER:
+			printf("Mode: USER \t IP: %d\n", _db_status.ip);
+			break;
+	}
 
 	while (!done)
 	{
@@ -296,6 +308,10 @@ debug_command(char *command)
 			debug_display_inodetable();
 			break;
 
+		case DEBUG_USERTABLE:
+			debug_display_usertable();
+			break;
+
 		case DEBUG_LOCATION:
 			arg1 = strtok(NULL, delim);
 
@@ -320,6 +336,25 @@ debug_command(char *command)
 			{
 				debug_display_val (arg1);
 			}
+			break;
+
+		case DEBUG_WATCH:
+			arg1 = strtok(NULL, delim);
+
+			if (!arg1)
+			{
+				printf("Invalid argument for \"%s\". See \"help\" for more information.\n", command);
+			}
+			else
+			{
+				debug_watch_add (atoi(arg1));
+				printf("Watch point added at %d.\n", atoi(arg1));
+			}
+			break;
+
+		case DEBUG_WATCHCLEAR:
+			debug_watch_clear();
+			printf("Watch points cleared.\n");
 			break;
 
 		case DEBUG_LIST:
@@ -672,13 +707,13 @@ debug_display_ft ()
 	for (i = 0; i < MAX_OPENFILE_NUM; ++i)
 	{
 		word = memory_get_word(ptr++);
-		printf ("Inode Index %s\t", word_get_string(word));
+		printf ("Inode Index: %s\t", word_get_string(word));
 
 		word = memory_get_word(ptr++);
-		printf("Open Instance Count %s\t", word_get_string(word));
+		printf("Open Instance Count: %s\t", word_get_string(word));
 
 		word = memory_get_word(ptr++);
-		printf ("Lseek %s\n", word_get_string(word));
+		printf ("Lseek: %s\n", word_get_string(word));
 		ptr++; /* Unused field. */
 	}
 
@@ -828,15 +863,19 @@ int
 debug_display_list()
 {
 	char instr[DEBUG_STRING_LEN];
-	int i;
+	int i, addr;
 
 	for (i = 0; i <= 2 * DEBUG_LIST_LEN; ++i)
 	{
-		memory_retrieve_raw_instr (instr, machine_translate_address(_db_status.ip + (i - DEBUG_LIST_LEN - 1) * XSM_INSTRUCTION_SIZE,FALSE));
-		if (i == DEBUG_LIST_LEN)
-			printf("%d* \t %s \n", _db_status.ip + (i - DEBUG_LIST_LEN - 1) * XSM_INSTRUCTION_SIZE, instr);
+		addr = machine_translate_address(_db_status.ip + (i - DEBUG_LIST_LEN) * XSM_INSTRUCTION_SIZE, FALSE, DEBUG_FETCH);
+		if(addr >= 0)
+			memory_retrieve_raw_instr (instr, addr);
 		else
-			printf("%d \t %s \n", _db_status.ip + (i - DEBUG_LIST_LEN - 1) * XSM_INSTRUCTION_SIZE, instr);
+			instr[0]='\0';
+		if (i == DEBUG_LIST_LEN)
+			printf("%d* \t %s \n", _db_status.ip + (i - DEBUG_LIST_LEN) * XSM_INSTRUCTION_SIZE, instr);
+		else
+			printf("%d \t %s \n", _db_status.ip + (i - DEBUG_LIST_LEN) * XSM_INSTRUCTION_SIZE, instr);
 	}
 
 	return TRUE;
@@ -846,7 +885,7 @@ int
 debug_display_location (int loc)
 {
 	xsm_word *word;
-	int mode, ptbr;
+	int mode, ptbr, ptlr;
 
 	mode = machine_get_mode();
 
@@ -859,7 +898,8 @@ debug_display_location (int loc)
 		int tr_loc;
 
 		ptbr = registers_get_integer("PTBR");
-		tr_loc = memory_translate_address (ptbr, loc, FALSE);
+		ptlr = registers_get_integer("PTLR");
+		tr_loc = memory_translate_address (ptbr, ptlr, loc, FALSE);
 
 		if (tr_loc < 0)
 		{

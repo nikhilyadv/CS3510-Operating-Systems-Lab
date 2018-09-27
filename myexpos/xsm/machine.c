@@ -128,7 +128,7 @@ machine_serve_instruction (char _output_ *buffer, unsigned long _output_ *read_b
    ip_reg = machine_get_ipreg();
    ip_val = word_get_integer(ip_reg);
 
-   ip_val = machine_translate_address(ip_val, FALSE);
+   ip_val = machine_translate_address(ip_val, FALSE, INSTR_FETCH);
    instr_mem = machine_memory_get_word(ip_val);
 
    memcpy (buffer, instr_mem->val, bytes_to_read);
@@ -196,14 +196,14 @@ machine_get_spreg ()
 void
 machine_pre_execute(int ip_val)
 {
-   /* Clear the potential watchpoint trigger. */
-   _thecpu.mem_low = -1;
-
    /* If debugging was requested, activate the debug command line. */
    if (_theoptions.debug)
    {
       debug_next_step (ip_val);
    }
+
+   /* Clear the potential watchpoint trigger. */
+   _thecpu.mem_low = -1;
 }
 
 int
@@ -273,8 +273,8 @@ machine_run ()
 			Enabled Only in User mode
        */
 
-       if( machine_get_mode() == PRIVILEGE_USER)
-			machine_post_execute ();
+      if(machine_get_mode() == PRIVILEGE_USER)
+			   machine_post_execute ();
 
    }
 
@@ -295,8 +295,16 @@ machine_handle_exception()
    char *message;
    int code, mode;
    int curr_ip;
+   const char **reg_names;
+ 	 int num_regs;
+ 	 int i;
+ 	 char *content;
 
    xsm_word *reg_eip, *reg_epn, *reg_ec, *reg_ema;
+
+   curr_ip = word_get_integer(registers_get_register("IP"));
+   curr_ip = curr_ip - XSM_INSTRUCTION_SIZE;
+   word_store_integer (machine_get_ipreg(), curr_ip);
 
    /* Get the details about the exception. */
    mode = machine_get_mode ();
@@ -310,17 +318,24 @@ machine_handle_exception()
    reg_ema = registers_get_register("EMA");
 
    // fetch ip store in eip
-   curr_ip = word_get_integer(registers_get_register("IP"));
    word_store_integer(reg_eip, curr_ip);
+   word_store_integer(reg_ec, code);
 
-   switch(mode)
+   switch(code)
    {
       case EXP_ILLMEM:
          word_store_integer (reg_ema, exception_get_ma());
+         word_store_string (reg_epn, "");
          break;
 
       case EXP_PAGEFAULT:
+         word_store_string (reg_ema, "");
          word_store_integer (reg_epn, exception_get_epn());
+         break;
+
+      default:
+         word_store_string (reg_ema, "");
+         word_store_string (reg_epn, "");
          break;
    }
 
@@ -330,10 +345,16 @@ machine_handle_exception()
       return XSM_SUCCESS;
    }
 
-   fprintf (stderr, "%s: System halted.\n", message);
-   /* TODO May print the machine status if required. */
-   fprintf (stderr, "Trace:\nEIP %s\tEPN %s\t EC %s\t EMA %s\n",
-      word_get_string(reg_eip), word_get_string(reg_epn), word_get_string(reg_ec), word_get_string(reg_ema));
+   fprintf (stderr, "%s: Dumping registers and machine halting.\n", message);
+
+   reg_names = registers_names();
+   num_regs = registers_len();
+ 	 for (i = 0; i < num_regs; ++i)
+ 	 {
+     content = registers_get_string (reg_names[i]);
+ 	   printf ("%s: %s\n", reg_names[i], content);
+   }
+
    return XSM_FAILURE;
 }
 
@@ -341,7 +362,12 @@ void
 machine_post_execute ()
 {
    /* Tick the timers. */
-   _thecpu.timer--;
+   if(_thecpu.timer >= 0)
+      _thecpu.timer--;
+   if(_thecpu.disk_wait > 0)
+      _thecpu.disk_wait--;
+   if(_thecpu.console_wait > 0)
+      _thecpu.console_wait--;
 
    if (_thecpu.timer == 0)
    {
@@ -352,8 +378,6 @@ machine_post_execute ()
 
    else if (_thecpu.disk_state == XSM_DISK_BUSY)
    {
-      _thecpu.disk_wait--;
-
       if (_thecpu.disk_wait == 0)
       {
          if (XSM_DISKOP_LOAD == _thecpu.disk_op.operation)
@@ -373,7 +397,6 @@ machine_post_execute ()
 
    else if (XSM_CONSOLE_BUSY == _thecpu.console_state)
    {
-      _thecpu.console_wait--;
       if (_thecpu.console_wait == 0)
       {
          if (XSM_CONSOLE_PRINT == _thecpu.console_op.operation)
@@ -767,7 +790,7 @@ machine_get_address (int write)
 int
 machine_get_address_int (int write)
 {
-   int token, address;
+   int token, address, ret_addr;
    YYSTYPE token_info;
 
    /* Skip the opening square bracket. */
@@ -788,7 +811,7 @@ machine_get_address_int (int write)
 
       default:
          /* Mark him. */
-         machine_register_exception ("Invalid memory derefence.", EXP_ILLINSTR);
+         machine_register_exception("Invalid memory derefence.", EXP_ILLINSTR);
    }
 
    /* Next one is a bracket, neglect. */
@@ -796,34 +819,53 @@ machine_get_address_int (int write)
 
    /* Ask the MMU to translate the address for us. */
 
-   address = machine_translate_address (address, write);
+   ret_addr = machine_translate_address (address, write, OPER_FETCH);
 
-   if (XSM_MEM_NOWRITE == address)
-   {
-      exception_set_ma (address);
-      machine_register_exception("Access violation.", EXP_ILLMEM);
-   }
-
-   else if (XSM_MEM_PAGEFAULT == address)
-   {
-      exception_set_epn (memory_addr_page(address));
-      machine_register_exception("Page fault.", EXP_PAGEFAULT);
-   }
-
-   return address;
+   return ret_addr;
 }
 
 int
-machine_translate_address (int address, int write)
+machine_translate_address (int address, int write, int type)
 {
-   int ptbr;
+   int ptbr, ptlr, ret_addr, curr_ip;
 
    if (_thecpu.mode == PRIVILEGE_KERNEL)
       return address;
 
    /* User mode, ask the MMU to translate. */
    ptbr = word_get_integer (registers_get_register("PTBR"));
-   return memory_translate_address (ptbr, address, write);
+   ptlr = word_get_integer (registers_get_register("PTLR"));
+   ret_addr = memory_translate_address (ptbr, ptlr, address, write);
+
+   if (ret_addr < 0 && type == DEBUG_FETCH)
+      return ret_addr;
+
+   if (ret_addr < 0 && type == INSTR_FETCH)
+   {
+     curr_ip = word_get_integer(registers_get_register("IP"));
+     curr_ip = curr_ip + XSM_INSTRUCTION_SIZE;
+     word_store_integer (machine_get_ipreg(), curr_ip);
+   }
+
+   if (XSM_MEM_NOWRITE == ret_addr)
+   {
+      exception_set_ma (address);
+      machine_register_exception("Access violation.", EXP_ILLMEM);
+   }
+
+   else if (XSM_MEM_PAGEFAULT == ret_addr)
+   {
+      exception_set_epn (memory_addr_page(address));
+      machine_register_exception("Page fault.", EXP_PAGEFAULT);
+   }
+
+   else if(XSM_MEM_ILLPAGE == ret_addr)
+   {
+      exception_set_ma (address);
+      machine_register_exception("Address outside logical address space.", EXP_ILLMEM);
+   }
+
+   return ret_addr;
 }
 
 int
@@ -986,7 +1028,7 @@ machine_push_do (xsm_word *reg)
    word_store_integer(sp_reg, stack_top + 1);
 
    /* Get the new stack pointer. */
-   xw_stack_top = machine_stack_pointer (FALSE);
+   xw_stack_top = machine_stack_pointer(TRUE);
 
    /* Put the word on the top of stack. */
    word_copy (xw_stack_top, reg);
@@ -1000,7 +1042,7 @@ machine_pop_do (xsm_word *dest)
    xsm_word *sp_reg;
    int stack_top;
 
-   xw_stack_top = machine_stack_pointer(TRUE);
+   xw_stack_top = machine_stack_pointer(FALSE);
    sp_reg = registers_get_register("SP");
    stack_top = word_get_integer(sp_reg);
 
@@ -1018,7 +1060,9 @@ machine_stack_pointer (int write)
    sp_reg = registers_get_register ("SP");
    stack_top = word_get_integer(sp_reg);
 
-   stack_top = machine_translate_address (stack_top, write);
+   stack_top = machine_translate_address (stack_top, write, OPER_FETCH);
+   if(write)
+      _thecpu.mem_low = stack_top;
 
    return machine_memory_get_word(stack_top);
 }
@@ -1042,7 +1086,7 @@ machine_execute_call_do (int target)
    /* Save IP onto the stack. */
    ipreg = registers_get_register("IP");
    curr_ip = word_get_integer(ipreg);
-   stack_pointer = machine_stack_pointer (TRUE);
+   stack_pointer = machine_stack_pointer(TRUE);
    word_store_integer(stack_pointer, curr_ip);
 
    /* Update IP to the new code location. */
@@ -1132,7 +1176,7 @@ machine_execute_ret ()
    int curr_sp;
 
    spreg = registers_get_register ("SP");
-   stack_pointer = machine_stack_pointer (TRUE);
+   stack_pointer = machine_stack_pointer(FALSE);
    target = word_get_integer(stack_pointer);
 
    curr_sp = word_get_integer (spreg);
@@ -1167,12 +1211,18 @@ machine_execute_interrupt_do (int interrupt)
 {
    int target;
 
-   target = machine_interrupt_address (interrupt);
-
-   machine_execute_call_do (target);
-
    if (machine_get_mode() == PRIVILEGE_KERNEL)
       machine_register_exception("Invoking interrupts in kernel mode not allowed", EXP_ILLINSTR);
+
+   target = machine_interrupt_address (interrupt);
+   if (interrupt != XSM_INTERRUPT_EXHANDLER)
+   {
+     machine_execute_call_do (target);
+   }
+   else
+   {
+     word_store_integer(machine_get_ipreg(), target);
+   }
 
    /* Change the mode now, that will do. */
    machine_set_mode (PRIVILEGE_KERNEL);
@@ -1228,11 +1278,15 @@ machine_execute_disk (int operation, int immediate)
    xsm_word *page_base;
 
    page_num = machine_read_disk_arg();
+   if (page_num <= 0 || page_num >= 128)
+      machine_register_exception("Invalid page number for disk instruction", EXP_ILLINSTR);
 
    /* Comma, neglect */
    tokenize_skip_token();
 
    block_num = machine_read_disk_arg();
+   if (block_num < 0 || block_num >= 512)
+      machine_register_exception("Invalid block number for disk instruction", EXP_ILLINSTR);
 
    if (immediate)
    {

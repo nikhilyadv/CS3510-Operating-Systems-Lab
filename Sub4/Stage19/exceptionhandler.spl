@@ -1,0 +1,32 @@
+[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 9] = -1;
+alias userSP R0;
+userSP=SP;
+SP = [PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 11]*512 - 1;
+backup;
+multipush(EIP);
+if (EC != 0 || userSP == PTLR*512-1) then
+	print("Exiting");
+	R1 = 3;
+	R2 = [SYSTEM_STATUS_TABLE + 1];
+	call MOD_1;
+endif;
+if (EPN == 4 || EPN == 5 || EPN == 6 || EPN == 7) then			//heap error
+	R1 = 5;
+	R2 = [DISK_MAP_TABLE + [SYSTEM_STATUS_TABLE + 1]*10 + EPN];
+	call MOD_2;
+	[PTBR + EPN*2] = R0;
+	[PTBR + EPN*2+1] = "1100";
+else
+	R1 = 1;
+	call MOD_2;
+	[PTBR + EPN*2] = R0;
+	[PTBR + EPN*2+1] = "1110";
+endif;
+[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 0;
+multipop(EIP);
+restore;
+SP = R0;		//R0 had userstack
+breakpoint;
+SP = SP + 1;
+[SP] = ([PTBR + 2*(EIP/512)]+EIP%512);
+ireturn;

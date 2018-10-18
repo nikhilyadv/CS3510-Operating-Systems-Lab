@@ -36,7 +36,7 @@ endif;
 if (functionNum == 4) then			//Release Block
 	alias BlockNum R2;
 	alias pid R3;
-	[DISK_FREE_LIST+BlockNum] = [DISK_FREE_LIST+BlockNum]-1;
+	[DISK_FREE_LIST + BlockNum] = 0;
 	return;
 endif;
 if (functionNum == 5) then			//Get Code Page

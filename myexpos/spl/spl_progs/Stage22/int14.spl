@@ -22,7 +22,7 @@ if (SyscallNumber == 19) then				//SemLock
 	if (sdescriptor >= 0 && sdescriptor < 8 && [perprocesstable + 2*sdescriptor] == 1) then
 		while ([SEMAPHORE_TABLE + 4 * [perprocesstable + 2*sdescriptor + 1]] != [SYSTEM_STATUS_TABLE + 1] && [SEMAPHORE_TABLE + 4 * [perprocesstable + 2*sdescriptor + 1]] != -1) do
 			[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 4] = WAIT_SEMAPHORE;
-			[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 5] = sdescriptor;
+			[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 5] = [perprocesstable + 2*sdescriptor + 1];
 			multipush(R1,R2,R3,R4,R5,R6,R7);
 			call MOD_5;
 			multipop(R1,R2,R3,R4,R5,R6,R7);
@@ -58,7 +58,7 @@ if (SyscallNumber == 20) then				//SemUnLock
 				alias counter R8;
 				counter = 1;
 				while (counter < 16) do
-					if([PROCESS_TABLE + (counter * 16) + 4] == WAIT_SEMAPHORE && [PROCESS_TABLE + (counter * 16) + 5] == sdescriptor) then
+					if([PROCESS_TABLE + (counter * 16) + 4] == WAIT_SEMAPHORE && [PROCESS_TABLE + (counter * 16) + 5] == [perprocesstable + 2*sdescriptor + 1]) then
 						[PROCESS_TABLE + (counter * 16) + 4] = READY;
 						[PROCESS_TABLE + (counter * 16) + 5] = 0;
 					endif;

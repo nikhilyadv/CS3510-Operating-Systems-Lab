@@ -1,0 +1,6 @@
+Stage 19 and less - 
+	some disk related issue
+Stage 22 -
+	assignment 3 concurrent part not running
+Stage 23 and less - 
+	fork system call is not increasing seamphore count

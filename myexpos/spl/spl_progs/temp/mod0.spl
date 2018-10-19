@@ -1,0 +1,159 @@
+/////////////Resource Manager
+multipush (R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15);
+alias functionNum R1;
+if (functionNum == 1) then  // acquire buffer
+	alias bufferNumber R2;
+	alias currentPID R3;
+	while (1) do
+		if ([BUFFER_TABLE + bufferNumber * 4 + 2] == -1) then  // i.e. not locked
+			break;
+		endif;
+		[PROCESS_TABLE + currentPID * 16 + 4] = WAIT_BUFFER; 
+		[PROCESS_TABLE + currentPID * 16 + 5] = bufferNumber; 	
+		multipush (R1, R2, R3);
+		call MOD_5;
+		multipop (R1, R2, R3);
+	endwhile;
+	[BUFFER_TABLE + bufferNumber * 4 + 2] = currentPID;
+endif;
+if (functionNum == 2) then  // release buffer
+	alias bufferNumber R2;
+	alias currentPID R3;
+	if ([BUFFER_TABLE + bufferNumber * 4 + 2] != currentPID) then
+		R0 = -1;
+	else
+		[BUFFER_TABLE + bufferNumber * 4 + 2] = -1;
+		alias cnter R4;
+		cnter = 0;
+		while (cnter < 16) do
+			if ([PROCESS_TABLE + cnter * 16 + 4] == WAIT_BUFFER && [PROCESS_TABLE + cnter * 16 + 5] == bufferNumber) then
+				[PROCESS_TABLE + cnter * 16 + 4] = READY;
+				[PROCESS_TABLE + cnter * 16 + 5] = 0;	
+			endif;
+			cnter = cnter + 1;
+		endwhile;
+		R0 = 0;
+	endif;	
+endif;
+if (functionNum == 3) then  // acquire disk (returns nothing)
+	alias currentPID R2;
+	while (1) do  // while the disk is locked
+		if ([DISK_STATUS_TABLE] != 1) then
+			break;
+		endif;
+		[PROCESS_TABLE + currentPID * 16 + 4] = WAIT_DISK; 	
+		multipush (R1, R2, R3);
+		call MOD_5;
+		multipop (R1, R2, R3);
+	endwhile;
+	[DISK_STATUS_TABLE] = 1;  // locking
+	[DISK_STATUS_TABLE + 4] = currentPID;
+endif;
+if (functionNum == 4) then  // acquire inode
+	alias inodeIndex R2;
+	alias currentPID R3;
+	while (1) do
+	// The File Status Table contains details about lock status and file open count of each file in the inode table. It consists of MAX_FILE_NUM (= 60 in the present eXpOS version) entries. For each file, the index of its entry in the inode table must match with the index of its entry in the file status table. Each file lock status table entry is of size 4 words of which two are unused.
+		// first word is the locking pid which is set the pid of the process which locked it and is -1 otherwise. Second word is FILE OPEN COUNT which specifies the number of open instances of the file. This field is set to -1 if there are no open instances of the file in the system.
+		if ([FILE_STATUS_TABLE + inodeIndex * 4] == -1) then
+			break;
+		endif;
+		[PROCESS_TABLE + currentPID * 16 + 4] = WAIT_FILE;
+		[PROCESS_TABLE + currentPID * 16 + 5] = inodeIndex;
+		multipush (R1, R2, R3);
+		call MOD_5;
+		multipop (R1, R2, R3);
+	endwhile;	
+	if ([INODE_TABLE + (inodeIndex * 16) + 1] == -1) then
+	// some other process may delete the file while the current process was waiting for the inode to be free
+		R0 = -1;
+	else
+		[FILE_STATUS_TABLE + inodeIndex * 4] = currentPID;  // lockit
+		R0 = 0;
+	endif;
+endif;
+if (functionNum == 5) then  // release inode
+	alias inodeIndex R2;
+	alias currentPID R3;
+	if ([FILE_STATUS_TABLE + inodeIndex * 4] != currentPID) then
+		R0 = -1;
+	else
+		[FILE_STATUS_TABLE + inodeIndex * 4] = -1;  // unlock
+		alias cnter R4;
+		cnter = 0;
+		while (cnter < 16) do
+			if ([PROCESS_TABLE + cnter * 16 + 4] == WAIT_FILE && [PROCESS_TABLE + cnter * 16 + 5] == inodeIndex) then
+				[PROCESS_TABLE + cnter * 16 + 4] = READY;
+				[PROCESS_TABLE + cnter * 16 + 5] = 0;	
+			endif;
+			cnter = cnter + 1;
+		endwhile;
+		R0 = 0;
+	endif;
+endif;
+if (functionNum == 6) then  // Acquire Semaphore.
+	alias currentPID R2;	
+	alias cnter R3;
+	cnter = 0;
+	R0 = -1;
+	while (cnter < 32) do  // finding free entry
+		if ([SEMAPHORE_TABLE + (cnter * 4) + 1] == 0) then  // process count field should be 0.
+			[SEMAPHORE_TABLE + (cnter * 4) + 1] = 1;
+			[SEMAPHORE_TABLE + (cnter * 4)] = -1;	
+			R0 = cnter;  // return the index of the free entry. Later index needs to be multiplied by 4.
+			break;	 // Sanity
+		endif;
+		cnter = cnter + 1;
+	endwhile;
+endif;
+if (functionNum == 7) then  // Release Semaphore
+	alias semTableIndex R2;
+	alias currentPID R3;
+	if ([SEMAPHORE_TABLE + (semTableIndex * 4)] == currentPID) then
+		[SEMAPHORE_TABLE + (semTableIndex * 4)] = -1;
+		alias cnter R4;
+		cnter = 0;
+		while (cnter < 16) do
+			if ([PROCESS_TABLE + cnter * 16 + 4] == WAIT_SEMAPHORE && [PROCESS_TABLE + cnter * 16 + 5] == semTableIndex) then
+				[PROCESS_TABLE + cnter * 16 + 4] = READY;
+				[PROCESS_TABLE + cnter * 16 + 5] = 0;	
+			endif;
+			cnter = cnter + 1;
+		endwhile;
+	endif;
+	[SEMAPHORE_TABLE + (semTableIndex * 4) + 1] = [SEMAPHORE_TABLE + (semTableIndex * 4) + 1] - 1;
+	R0 = 0;
+endif;
+if (functionNum == 8) then  // acquire terminal
+	alias currentPID R2;
+	while (1) do
+		if ([TERMINAL_STATUS_TABLE] != 1) then
+			break;
+		endif;	
+		[PROCESS_TABLE + currentPID * 16 + 4] = WAIT_TERMINAL; 
+		multipush (R1, R2, R3);
+		call MOD_5;
+		multipop (R1, R2, R3);
+	endwhile;
+	[TERMINAL_STATUS_TABLE] = 1;
+	[TERMINAL_STATUS_TABLE + 1] = currentPID;
+endif;
+if (functionNum == 9) then  // release terminal
+	alias currentPID R2;
+	if (currentPID != [TERMINAL_STATUS_TABLE + 1]) then
+		R0 = -1;
+	else
+		[TERMINAL_STATUS_TABLE] = 0;
+		alias cnter R4;
+		cnter = 1;
+		while (cnter <= 15) do
+			if ([PROCESS_TABLE + cnter * 16 + 4] == WAIT_TERMINAL) then
+				[PROCESS_TABLE + cnter * 16 + 4] = READY;
+			endif;
+			cnter = cnter + 1;
+		endwhile;
+		R0 = 0;
+	endif;
+endif;
+multipop (R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15);
+return;

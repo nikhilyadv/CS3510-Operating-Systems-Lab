@@ -11,7 +11,7 @@ begin
     temp=exposcall("Create",filename, permission);
     fd=exposcall("Open",filename);
     iter = 1;
-    while (iter <= 110) do
+    while (iter <= 1100) do
     	temp=exposcall("Write",fd, iter);
     	iter=iter+1;
     endwhile;
@@ -22,8 +22,6 @@ begin
     	temp=exposcall("Seek",fd,-2);
     endwhile;
     temp=exposcall("Close", fd);
-    temp=exposcall("Delete", filename);
-    write(temp);
     return 0;
 end
 }

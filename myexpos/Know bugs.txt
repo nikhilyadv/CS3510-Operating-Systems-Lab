@@ -7,3 +7,6 @@ Stage 23 and less -
 Stage 24 and less -
 	error in int11 check for valid wait
 	some delete bug - mod3 (counter instead of fileindex)
+	mod7 init process not initalized (Stack pointer)
+Stage 25 and less -
+	in kill all mod 1 replace pid by counter

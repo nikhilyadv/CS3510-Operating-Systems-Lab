@@ -93,7 +93,6 @@ if (SyscallNumber == 4) then				//delete
 		R12 = ROOT_FILE + fileindex * 8;
 
 		if ([R11 + 0] != DATA) then
-				print([R11 + 1]);
 				[physicalAddrRetVal] = -1;
 		else
 			if ([R11 + 4] == 0) then			//if exclusive
@@ -124,7 +123,6 @@ if (SyscallNumber == 4) then				//delete
 						counter = 8;
 						while (counter < 12) do
 							if ([R11 + counter] != -1) then
-								print([R11 + counter]);
 								iter = 0;
 								while (iter < 4) do
 									if ([BUFFER_TABLE + iter * 4 + 0] == [R11 + counter] && [BUFFER_TABLE + iter * 4 + 1] == 1) then

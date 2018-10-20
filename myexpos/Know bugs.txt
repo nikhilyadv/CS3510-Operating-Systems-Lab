@@ -4,3 +4,6 @@ Stage 22 -
 	assignment 3 concurrent part not running
 Stage 23 and less - 
 	fork system call is not increasing seamphore count
+Stage 24 and less -
+	error in int11 check for valid wait
+	some delete bug - mod3 (counter instead of fileindex)

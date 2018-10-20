@@ -60,12 +60,14 @@ if (functionNum == 3) then			//Exit
 			counter = counter + 1;
 		endwhile;
 	endif;
+	multipush(R1,R2);
 	R1 = 4;			//Free page table
 	R2 = pid;
 	call MOD_1;
 	R1 = 2;			//Free User area page
 	R2 = pid;
 	call MOD_1;
+	multipop(R1,R2);
 	[PROCESS_TABLE + (pid * 16) + 4] = TERMINATED;
 	return;
 endif;

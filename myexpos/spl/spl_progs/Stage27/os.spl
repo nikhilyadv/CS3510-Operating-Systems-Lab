@@ -36,5 +36,4 @@ PTLR=10;
 [SYSTEM_STATUS_TABLE + 1] = 0;
 [70 * 512] = [69*512 + 1];
 SP = 8*512;
-breakpoint;
 ireturn;

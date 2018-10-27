@@ -1,23 +1,19 @@
 alias functionNum R1;
 if (functionNum == 1) then			//Get Free Page
 	[SYSTEM_STATUS_TABLE + 3] = [SYSTEM_STATUS_TABLE + 3] + 1;	//wait mem count
-	alias flag R2;
-	flag = -1;
 	while ([SYSTEM_STATUS_TABLE + 2] == 0) do
+		multipush(R1);
+		R1 = 1;
+		R2 = [SYSTEM_STATUS_TABLE + 1];
+		call MOD_6;
+		multipop(R1);
 		[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 4] = WAIT_MEM;
-		print("Waitmem");
-		print([SYSTEM_STATUS_TABLE+1]);
-		flag = 1;
 		multipush(R1,R2);
 		call MOD_5;
 		multipop(R1,R2);
 	endwhile;
 	[SYSTEM_STATUS_TABLE + 2] = [SYSTEM_STATUS_TABLE + 2] - 1; 
 	[SYSTEM_STATUS_TABLE + 3] = [SYSTEM_STATUS_TABLE + 3] - 1;
-	if (flag == 1) then
-		print("Waitover");
-		print([SYSTEM_STATUS_TABLE+1]);
-	endif;
 	alias counter R0;
 	counter = 76;
 	while (counter < 128) do
@@ -67,7 +63,7 @@ if (functionNum == 5) then			//Get Code Page
 	alias BlockNum R2;
 	alias counter R3;
 	alias index R4;
-	counter = 1;
+	counter = 3;
 	while(counter < 16) do
 		index = 4;
 		while(index < 8) do

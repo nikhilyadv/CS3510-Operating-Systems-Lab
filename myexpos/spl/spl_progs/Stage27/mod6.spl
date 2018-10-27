@@ -15,25 +15,22 @@ if (functionNum == 1) then			//Swap out
 	max = 0;
 	while(counter < 16) do
 		temp = PROCESS_TABLE + counter * 16;
-		if([temp + 4] == WAIT_PROCESS) then
-			flag1 = 1;
-			index = counter;
-		else
+		if ([temp+6] != 1 && [temp+4] != RUNNING) then
+			if([temp + 4] == WAIT_PROCESS) then
+				flag1 = 1;
+				index = counter;
+			endif;
 			if ([temp + 4] == WAIT_TERMINAL && flag1 == -1) then
 				flag2 = 1;
 				index = counter;
-			else
-				if ([temp+6] != 1 && [temp+4] != RUNNING && [temp+4] != READY && [temp+4] != WAIT_MEM && [temp] > max && flag1 == -1 && flag2 == -1) then
-					max = [temp];
-					index = counter;
-				endif;
+			endif;
+			if ([temp] > max && flag1 == -1 && flag2 == -1) then
+				max = [temp];
+				index = counter;
 			endif;
 		endif;
 		counter = counter + 1;
 	endwhile;
-	print("Swapped");
-	print(index);
-	breakpoint;
 	[PROCESS_TABLE + index* 16] = 0;					//set the tick to 0
 	// useful registers R1,R2,R3,R4,R5,R6,R7
 	alias ptbr R4;
@@ -124,14 +121,10 @@ if (functionNum == 1) then			//Swap out
 	return;
 endif;			
 if (functionNum == 2) then			//Swap in
-	return;
-	//print("MOD62");
-	//print([SYSTEM_STATUS_TABLE + 3]);
-	//breakpoint;
-	//if ([SYSTEM_STATUS_TABLE + 3] > 0 || [SYSTEM_STATUS_TABLE + 4] == 0) then
-	//	return;
-	//endif;
-	//[SYSTEM_STATUS_TABLE + 5] = [SYSTEM_STATUS_TABLE + 1];
+	if ([SYSTEM_STATUS_TABLE + 3] > 0 || [SYSTEM_STATUS_TABLE + 4] == 0) then
+		return;
+	endif;
+	[SYSTEM_STATUS_TABLE + 5] = [SYSTEM_STATUS_TABLE + 1];
 	alias counter R2;
 	alias index R3;
 	alias max R5;
@@ -141,9 +134,10 @@ if (functionNum == 2) then			//Swap in
 	max = -1;
 	flag = -1;
 	while (counter < 16) do
-		if ([PROCESS_TABLE + counter*16 + 6] == 1 && [PROCESS_TABLE + counter*16 + 4] == READY) then
-			if ([PROCESS_TABLE + counter*16] > max) then
-				max = [PROCESS_TABLE + counter*16];
+		R15 = PROCESS_TABLE + counter*16;
+		if ([R15 + 6] == 1 && [R15 + 4] == READY) then
+			if ([R15] > max) then
+				max = [R15];
 				index = counter;
 				flag = 1;
 			endif;
@@ -154,33 +148,41 @@ if (functionNum == 2) then			//Swap in
 		[SYSTEM_STATUS_TABLE + 5] = -1;
 		return;
 	endif;
-	[PROCESS_TABLE + index*16] = 0;
+	R15 = PROCESS_TABLE + index*16;
+	[R15] = 0;
 	alias blocknumber R4;
 	alias ptbr R5;
-	ptbr = [PROCESS_TABLE + index*16 + 14];
+	ptbr = [R15 + 14];
 	counter = 4;
 	while (counter < 20) do
+		if (counter == 4 || counter == 6 || counter == 16 || counter == 18) then
 		blocknumber = [DISK_MAP_TABLE + 10*index + (counter/2)];
-		if (blocknumber != -1) then
-			multipush(R1,R2,R3,R4,R5);
-			R1 = 1;												//get free page
-			call MOD_2;
-			multipop(R1,R2,R3,R4,R5);
-			[ptbr + counter] = R0;
-			[ptbr + counter + 1] = "0110";
-			multipush(R1,R2,R3,R4,R5);
-			R1 = 2;												//disk load
-			R2 = [SYSTEM_STATUS_TABLE + 1];
-			R3 = R0;
-			R4 = blocknumber;
-			multipop(R1,R2,R3,R4,R5);
-			multipush(R1,R2,R3,R4,R5);
-			R1 = 4;												//release block
-			R2 = blocknumber;
-			R3 = [SYSTEM_STATUS_TABLE + 1];
-			call MOD_2;
-			multipop(R1,R2,R3,R4,R5);
-			[DISK_MAP_TABLE + 10*index + (counter/2)] = -1;
+			if (blocknumber != -1) then
+				multipush(R1,R2,R3,R4,R5);
+				multipush(R2,R4);
+				R1 = 1;												//get free page
+				call MOD_2;
+				multipop(R2,R4);
+				//multipop(R1,R2,R3,R4,R5);
+				[ptbr + counter] = R0;
+				[ptbr + counter + 1] = "0110";
+				//multipush(R1,R2,R3,R4,R5);
+				multipush(R4);
+				R1 = 2;												//disk load
+				R2 = [SYSTEM_STATUS_TABLE + 1];
+				R3 = R0;
+				R4 = blocknumber;
+				call MOD_4;
+				multipop(R4);
+				//multipop(R1,R2,R3,R4,R5);
+				//multipush(R1,R2,R3,R4,R5);
+				R1 = 4;												//release block
+				R2 = blocknumber;
+				R3 = [SYSTEM_STATUS_TABLE + 1];
+				call MOD_2;
+				multipop(R1,R2,R3,R4,R5);
+				[DISK_MAP_TABLE + 10*index + (counter/2)] = -1;
+			endif;
 		endif;
 		if (counter == 6) then
 			counter = 16;
@@ -200,6 +202,7 @@ if (functionNum == 2) then			//Swap in
 	R2 = [SYSTEM_STATUS_TABLE + 1];
 	R3 = R0;
 	R4 = blocknumber;
+	call MOD_4;
 	multipop(R1,R2,R3,R4,R5);
 	multipush(R1,R2,R3,R4,R5);
 	R1 = 4;												//release block

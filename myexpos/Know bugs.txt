@@ -10,3 +10,6 @@ Stage 24 and less -
 	mod7 init process not initalized (Stack pointer)
 Stage 25 and less -
 	in kill all mod 1 replace pid by counter
+Stage 26 and less -
+	in int9 line number 57 and 60 multipush and multipop don't match
+	Blunder in releasing inode table mod 0

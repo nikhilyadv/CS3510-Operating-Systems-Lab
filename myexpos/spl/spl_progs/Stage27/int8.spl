@@ -5,13 +5,8 @@ R1 = 1;				//get pcb entry for child process
 call MOD_1;
 alias childpid R1;
 childpid = R0;					//child pid is returned by get pcb entry
-if (childpid == -1) then		//failed
-	alias physicalAddrRetVal R3;
-	physicalAddrRetVal = ([PTBR + 2 * (([PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13] - 1) / 512)] * 512) + (([PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13] - 1) % 512);
-	[physicalAddrRetVal] = -1;
-	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 0;
-	SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13];
-	ireturn;
+if (childpid == -1) then
+	goto lb;
 endif;
 //get page 2 + 1 stack,userarea pages
 multipush(R1);
@@ -62,19 +57,13 @@ while(counter < 16) do
 	endif;
 	counter = counter + 2;
 endwhile;
-//
-//
-//TODO if heap page not allocated then allocate heap pages to parent
-//
-//
 alias pagenum R7;
-//alias temp R15;
 counter = 0;
 while(counter < 16) do				//uptil stack page
 	temp = PAGE_TABLE_BASE + 20*[SYSTEM_STATUS_TABLE + 1] + counter;
 	if(counter % 2 == 0) then
 		pagenum = [temp];
-		if (pagenum == -1) then					//only for heap pages
+		if (pagenum == -1 && (counter == 4 || counter == 6)) then	  //only for heap pages
 			multipush(R1,R4,R7,R15);
 			R1 = 1;
 			call MOD_2;
@@ -114,13 +103,13 @@ alias ptbr R4;
 stack = [PROCESS_TABLE + (childpid * 16) + 13];
 ptbr = [PROCESS_TABLE + (childpid * 16) + 14];
 [[ptbr + 2 * ((stack - 1) / 512)] * 512 + ((stack - 1) % 512)] = 0;
+[[PROCESS_TABLE + (childpid * 16) + 11]*512] = BP;		//putting BP register on top of child kernel stack
 //return value for parent process
-stack = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13];
-[[PTBR + 2 * ((stack - 1) / 512)] * 512 + ((stack - 1) % 512)] = childpid;
-[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 0;
-//putting BP register on top of child kernel stack
-[[PROCESS_TABLE + (childpid * 16) + 11]*512] = BP;
-SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13];
-//print("Fork");
-//breakpoint;
-ireturn;
+lb:
+	stack = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13];
+	[[PTBR + 2 * ((stack - 1) / 512)] * 512 + ((stack - 1) % 512)] = childpid;
+	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 0;
+	SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13];
+	//print("Fork");
+	//breakpoint;
+	ireturn;

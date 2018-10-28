@@ -1,0 +1,30 @@
+int main()
+{
+decl
+	str uname,r,u;
+    int uid,temp,fd;
+enddecl
+begin
+	read(uname);
+	uid = exposcall("Getuid",uname);
+	write(uid);
+	read(u);
+	if (u != "-1") then
+		fd = exposcall("Open","root");
+		//temp=exposcall("Seek",fd,3);
+		temp=exposcall("Read",fd, r);
+    	while (r != "-1") do
+    		temp=exposcall("Seek",fd,3);
+    		write(r);
+    		temp=exposcall("Read",fd, r);
+    		write(r);
+			if (r == u) then
+				write("Delete");
+			endif;
+			temp=exposcall("Seek",fd,3);
+			temp=exposcall("Read",fd, r);
+		endwhile;
+	endif;
+    return 0;
+end
+}

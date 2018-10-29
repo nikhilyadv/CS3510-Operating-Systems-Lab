@@ -16,6 +16,7 @@ begin
     	iter=iter+1;
     endwhile;
     temp=exposcall("Seek",fd,2048);		//get to the end
+    temp=exposcall("Seek",fd,-1);    
     while (temp == 0) do
     	temp=exposcall("Read",fd, p);
     	temp=exposcall("Write",-2, p);

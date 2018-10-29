@@ -1,0 +1,21 @@
+int main()
+{
+decl
+   int temp, pid1, pid2, pid3, pid4;
+enddecl
+
+begin
+   pid1 = exposcall ("Fork");
+   if (pid1 >= 0) then
+       pid2 = exposcall ("Fork");
+       if (pid2 >= 0) then
+           pid3 = exposcall ("Fork");
+           if (pid3 >= 0) then
+               pid4 = exposcall ("Fork");
+                   temp = exposcall ("Exec", "pid.xsm");
+           endif;
+       endif;
+   endif;
+   return 0;
+end
+}

@@ -150,8 +150,8 @@ while(counter < 81) do
 	[MEMORY_FREE_LIST + counter] = 1;
 	counter = counter + 1;
 endwhile;
-[MEMORY_FREE_LIST + 63] = 2;
-[MEMORY_FREE_LIST + 64] = 2;
+[MEMORY_FREE_LIST + 63] = 1;
+[MEMORY_FREE_LIST + 64] = 1;
 [SYSTEM_STATUS_TABLE + 2] = 47;
 [SYSTEM_STATUS_TABLE + 3] = 0;
 [SYSTEM_STATUS_TABLE + 4] = 0;

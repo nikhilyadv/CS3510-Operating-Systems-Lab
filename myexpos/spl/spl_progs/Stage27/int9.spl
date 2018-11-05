@@ -47,8 +47,10 @@ else
 	ptbr = [PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 14];
 	[ptbr+0] = 63;
 	[ptbr+1] = "0100";
+	[MEMORY_FREE_LIST + 63] = [MEMORY_FREE_LIST + 63] + 1;
 	[ptbr+2] = 64;
 	[ptbr+3] = "0100";
+	[MEMORY_FREE_LIST + 64] = [MEMORY_FREE_LIST + 64] + 1;
 	[ptbr+5] = "0000";		//invalidate heap pages
 	[ptbr+7] = "0000";
 	alias counter R9;

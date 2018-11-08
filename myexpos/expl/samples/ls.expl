@@ -2,15 +2,18 @@ int main()
 {
 decl
     str r;
-    int temp,fd;
+    int temp,fd,counter;
 enddecl
 begin
     fd=exposcall("Open","root");
-    temp=exposcall("Read",fd, r);
-    while (r != "-1") do
-		temp=exposcall("Write",-2,r);
+    counter = 0;
+    while (counter < 60) do
+    	temp=exposcall("Read",fd, r);
+    	if (r != "-1") then
+			temp=exposcall("Write",-2,r);
+		endif;
 		temp=exposcall("Seek",fd,7);
-		temp=exposcall("Read",fd, r);
+		counter = counter + 2;
 	endwhile;
     return 0;
 end

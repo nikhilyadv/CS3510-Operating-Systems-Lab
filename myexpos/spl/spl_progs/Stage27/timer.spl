@@ -29,8 +29,8 @@ SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13];
 [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 0;
 //print([SYSTEM_STATUS_TABLE + 1]);
 //print("timer");
-if ([SYSTEM_STATUS_TABLE+1] == 2) then
-	breakpoint;
-endif;
+//if ([SYSTEM_STATUS_TABLE+1] == 2) then
+//	breakpoint;
+//endif;
 //breakpoint;
 ireturn;

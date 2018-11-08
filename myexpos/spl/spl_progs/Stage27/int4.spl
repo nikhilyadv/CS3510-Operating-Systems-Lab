@@ -40,6 +40,8 @@ alias freeentry R9;
 flag = 0;
 fileindex = 0;				//inode table page 59
 freeentry = -1;
+	print("delete");
+	breakpoint;
 while (fileindex < 60) do
 	if ([INODE_TABLE + fileindex * 16 + 1] == -1 && freeentry == -1) then
 		freeentry = fileindex;
@@ -91,7 +93,6 @@ if (SyscallNumber == 4) then				//delete
 	else
 		R11 = INODE_TABLE + fileindex * 16;
 		R12 = ROOT_FILE + fileindex * 8;
-
 		if ([R11 + 0] != DATA) then
 				[physicalAddrRetVal] = -1;
 		else

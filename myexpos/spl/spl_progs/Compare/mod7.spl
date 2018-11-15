@@ -1,0 +1,226 @@
+// PreProcess
+loadi (61, 2); // loading disk free list
+loadi (2, 15); // these two lines are for exception handler
+loadi (3, 16);
+loadi (4, 17);  // timer
+loadi (5, 18);
+loadi (6, 19);  // disk interrupt routine
+loadi (7, 20);
+loadi (8, 21); // console interrupt routine
+loadi (9, 22);
+loadi (10, 23);  // interrupt 4
+loadi (11, 24);
+loadi (12, 25);  // interrupt 5
+loadi (13, 26);
+loadi (14, 27); // interrupt 6
+loadi (15, 28);
+loadi (16, 29);  // interrupt 7
+loadi (17, 30);
+loadi (18, 31);  // interrupt 8
+loadi (19, 32);
+loadi (20, 33);  // interrupt 9
+loadi (21, 34);
+loadi (22, 35); // these two lines are for INT10
+loadi (23, 36);
+loadi (24, 37);  // interrupt 11
+loadi (25, 38);
+loadi (26, 39);  // interrupt 12
+loadi (27, 40);
+loadi (28, 41);  // interrupt 13
+loadi (29, 42);
+loadi (30, 43);  // interrupt 14
+loadi (31, 44);
+loadi (32, 45);  // interrupt 15
+loadi (33, 46);
+loadi (34, 47);  // interrupt 16
+loadi (35, 48);
+loadi (36, 49);  // interrupt 17
+loadi (37, 50);
+// 38 - 39 are for test.
+loadi (40, 53); // module 0 
+loadi (41, 54);
+loadi (42, 55);  // module 1
+loadi (43, 56);
+loadi (44, 57); // module 2
+loadi (45, 58);
+loadi (46, 59);  // module 3
+loadi (47, 60);
+loadi (48, 61); // module 4
+loadi (49, 62);
+loadi (50, 63);  // module 5
+loadi (51, 64);  
+loadi (52, 65);  // module 6
+loadi (53, 66);
+// 54 - 55 is boot module.
+// 56 - 58 we dont have to do.
+loadi (59, 3);  // inode table, user table.
+loadi (60, 4);
+loadi (61, 2);	// disk free list
+loadi (62, 5);  // root file.
+loadi (63, 13);  // Library
+loadi (64, 14);
+loadi (65, 7); // init block is in disk 7, 8 but we are not loading 8 and hence memory page 66 is available
+loadi (67, 9);  // shell program
+loadi (68, 10);
+// setting the status to TERMINATED
+alias cnter R1;
+[PROCESS_TABLE] = 0;  // tick field
+cnter = 1;
+// i'll make the state of init as created later.
+while (cnter < 16) do
+	[PROCESS_TABLE + 4 + cnter * 16] = TERMINATED;
+	[PROCESS_TABLE + cnter * 16] = 0;
+	cnter = cnter + 1;
+endwhile;
+//////////
+[TERMINAL_STATUS_TABLE] = 0;  //Initialize the STATUS field in the Terminal Status table as 0. This will indicate that the terminal is free before scheduling the first process.
+
+
+
+///////////
+/////////////////////////////////
+
+/////////////////////////////////
+////////////////////////////////////////////
+// for login
+alias ptable R2;
+ptable = PROCESS_TABLE + 16;
+[ptable + 1] = 1; 
+[ptable + 4] = CREATED;
+[ptable + 11] = 77;
+[ptable + 13] = 4096; // 8 * 512 == 4096
+[ptable + 12] = 0; 
+[ptable + 14] = PAGE_TABLE_BASE + 20; 
+[ptable + 15] = 10;
+[ptable + 3] = 0;  // inits user id is set to 0 (owned by kernel). 
+PTBR = PAGE_TABLE_BASE + 20;
+PTLR = 10;
+//Library
+[PTBR+0] = 63;
+[PTBR+1] = "0100";
+[PTBR+2] = 64;
+[PTBR+3] = "0100";
+//Heap
+[PTBR+4] = -1;
+[PTBR+5] = "0000";
+[PTBR+6] = -1;
+[PTBR+7] = "0000";
+//Code
+[PTBR+8] = 65;
+[PTBR+9] = "0100";
+[PTBR+10] = -1;
+[PTBR+11] = "0000";
+[PTBR+12] = -1;
+[PTBR+13] = "0000";
+[PTBR+14] = -1;
+[PTBR+15] = "0000";
+//Stack
+[PTBR+16] = 66;
+[PTBR+17] = "0110";
+[PTBR+18] = -1;
+[PTBR+19] = "0000";
+[66*512] = [65 * 512 + 1];
+/////////////////////////////////
+////////////////////////////////////////////
+// for shell
+ptable = ptable + 16;
+[ptable + 1] = 2; 
+[ptable + 2] = 1;  // ppid
+[ptable + 3] = 1;  // userid
+[ptable + 4] = TERMINATED;
+[ptable + 11] = 80;
+[ptable + 13] = 4096; 
+[ptable + 12] = 0; 
+[ptable + 14] = PAGE_TABLE_BASE + 40; 
+[ptable + 15] = 10;
+PTBR = PAGE_TABLE_BASE + 40;
+PTLR = 10;
+//Library
+[PTBR+0] = 63;
+[PTBR+1] = "0100";
+[PTBR+2] = 64;
+[PTBR+3] = "0100";
+//Heap
+[PTBR+4] = -1;
+[PTBR+5] = "0000";
+[PTBR+6] = -1;
+[PTBR+7] = "0000";
+//Code
+[PTBR+8] = 67;
+[PTBR+9] = "0100";
+[PTBR+10] = 68;
+[PTBR+11] = "0100";
+[PTBR+12] = -1;
+[PTBR+13] = "0000";
+[PTBR+14] = -1;
+[PTBR+15] = "0000";
+//Stack
+[PTBR+16] = 78;
+[PTBR+17] = "0110";
+[PTBR+18] = 79;
+[PTBR+19] = "0110";
+[78*512] = [67 * 512 + 1];
+alias perProcessTable R3; // initialising per-process Resource Table
+perProcessTable = 81 * 512 - 16;
+cnter = 0;
+while (cnter < 8) do
+	[perProcessTable + 2 * cnter] = -1;
+	cnter = cnter + 1;
+endwhile;
+cnter = 0;
+while (cnter < 32) do
+	[SEMAPHORE_TABLE + (cnter * 4)] = -1;  // locking pid
+	[SEMAPHORE_TABLE + (cnter * 4) + 1] = 0;  // process count
+	cnter = cnter + 1;
+endwhile;
+cnter = 76;
+while (cnter < 128) do
+	[MEMORY_FREE_LIST + cnter] = 0;
+	cnter = cnter + 1;
+endwhile;	
+cnter = 0;
+while (cnter < 81) do
+	[MEMORY_FREE_LIST + cnter] = 1;
+	cnter = cnter + 1;
+endwhile;
+[MEMORY_FREE_LIST + 63] = 2;
+[MEMORY_FREE_LIST + 64] = 2;
+[SYSTEM_STATUS_TABLE + 3] = 0;  // wait_mem_count
+[SYSTEM_STATUS_TABLE + 2] = 47;   // mem_free_count
+////////
+[SYSTEM_STATUS_TABLE + 5] = -1;  // paging process pid.
+[SYSTEM_STATUS_TABLE + 4] = 0;  // process swap count.
+/////////////
+////////////////
+[DISK_STATUS_TABLE] = 0;  
+///////////////
+cnter = 0;  // initialise disk map table for shell process.
+while (cnter < 10) do
+	[DISK_MAP_TABLE + 20 + cnter] = -1;
+	cnter = cnter + 1;
+endwhile;
+[DISK_MAP_TABLE + 24] = 67;
+[DISK_MAP_TABLE + 25] = 68;
+//////////
+PTBR = PAGE_TABLE_BASE;
+cnter = 0;
+while (cnter < 60) do  // initialize file status table
+	[FILE_STATUS_TABLE + cnter * 4] = -1;
+	[FILE_STATUS_TABLE + cnter * 4 + 1] = -1;
+	cnter = cnter + 1;
+endwhile;
+cnter = 0;
+while (cnter < 4) do  // initialize buffer table
+	[BUFFER_TABLE + cnter * 4] = -1;
+	[BUFFER_TABLE + cnter * 4 + 1] = 0;
+	[BUFFER_TABLE + cnter * 4 + 2] = -1;
+	[BUFFER_TABLE + cnter * 4 + 3] = -1;
+	cnter = cnter + 1;
+endwhile;
+cnter = 0;
+while (cnter < 32) do  // initialize open file table
+	[OPEN_FILE_TABLE + cnter * 4] = -1;
+	[OPEN_FILE_TABLE + cnter * 4 + 1] = 0;
+	cnter = cnter + 1;
+endwhile;
+return;  // translates to RET

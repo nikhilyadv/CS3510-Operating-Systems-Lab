@@ -1,17 +1,11 @@
 [PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 9;
-alias userSP R0;
+alias userSP R1;
 userSP=SP;
 SP = [PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 11]*512 - 1;
-alias physicalPageNum R1;
-alias offset R2;
-alias filenameAddr R3;
-physicalPageNum = [PTBR + 2 * ((userSP - 4)/ 512)];
-offset = (userSP - 4) % 512;
-filenameAddr = (physicalPageNum * 512) + offset;
-alias filename R4;
-filename=[filenameAddr];
-alias fileindex R5;
-alias flag R6;
+alias filename R3;
+filename = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
+alias fileindex R4;
+alias flag R5;
 flag = 0;
 fileindex = 0;				//inode table page 59
 while (fileindex < 960) do
@@ -24,27 +18,26 @@ while (fileindex < 960) do
 	fileindex = fileindex + 16;
 endwhile;
 if (flag == 0) then
-	alias physicalAddrRetVal R7;
+	alias physicalAddrRetVal R10;
 	physicalAddrRetVal = ([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512);
 	[physicalAddrRetVal] = -1;
 	SP = userSP;
-	[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 0;
 else
 	fileindex = (INODE_TABLE + fileindex);
-	multipush(R1,R2,R3,R4,R5,R6);
+	multipush(R1,R2,R3,R4,R5);
 	R1 = 3; 							//calling exit
 	R2 = [SYSTEM_STATUS_TABLE + 1];
 	call MOD_1;
-	multipop(R1,R2,R3,R4,R5,R6);
-	alias UserAreaPage R7;
+	multipop(R1,R2,R3,R4,R5);
+	alias UserAreaPage R6;
 	UserAreaPage = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11];
 	[SYSTEM_STATUS_TABLE + 2] = [SYSTEM_STATUS_TABLE +2 ] - 1;
 	[MEMORY_FREE_LIST + UserAreaPage] = [MEMORY_FREE_LIST + UserAreaPage] + 1;
 	SP = UserAreaPage*512 - 1;
-	[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 4] = RUNNING;
-	[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 7] = fileindex;
-	alias ptbr R8;
-	ptbr = [PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 14];
+	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 4] = RUNNING;
+	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 7] = fileindex;
+	alias ptbr R7;
+	ptbr = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 14];
 	[ptbr+0] = 63;
 	[ptbr+1] = "0100";
 	[MEMORY_FREE_LIST + 63] = [MEMORY_FREE_LIST + 63] + 1;
@@ -53,23 +46,23 @@ else
 	[MEMORY_FREE_LIST + 64] = [MEMORY_FREE_LIST + 64] + 1;
 	[ptbr+5] = "0000";		//invalidate heap pages
 	[ptbr+7] = "0000";
-	alias counter R9;
+	alias counter R8;
 	counter = 0;
 	while (counter < 2) do			//Stack
-		multipush(R1,R2,R3,R4,R5,R6,R7,R8,R9);
+		multipush(R1,R2,R3,R4,R5,R6,R7,R8);
 		R1 = 1;
 		call MOD_2;
-		multipop(R1,R2,R3,R4,R5,R6,R7,R8,R9);
+		multipop(R1,R2,R3,R4,R5,R6,R7,R8);
 		[ptbr + 16 + counter*2] = R0;
 		[ptbr + 16 + counter*2 + 1] = "0110";
 		counter = counter + 1;
 	endwhile;
 	if([fileindex + 8] != -1) then				//first code page
-		multipush(R3,R4,R5,R6,R7,R8,R9);
+		multipush(R3,R4,R5,R6,R7,R8);
 		R1 = 5;									//get code page
 		R2 = [fileindex + 8];
 		call MOD_2;
-		multipop(R3,R4,R5,R6,R7,R8,R9);
+		multipop(R3,R4,R5,R6,R7,R8);
 		[ptbr+8] = R0;
 		if (R0 > 0) then
 			[ptbr+9] = "0100";
@@ -98,6 +91,8 @@ else
 	endwhile;
 	[[ptbr + 16]*512]=[[ptbr + 8]*512+1];
 	SP = 8*512;
-	[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 0;
 endif;
+//print("Exec");
+//breakpoint;
+[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 0;
 ireturn;

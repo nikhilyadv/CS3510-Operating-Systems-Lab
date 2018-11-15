@@ -1,0 +1,143 @@
+// Assumptions: Never use R0 - R4. As they'll be reserved for module calls. No need to save context of other registers as they are saved by the respective modules.
+// Open and Close System Calls.
+alias userSP R5;
+userSP = SP;
+[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13] = SP;  // saving user stack value
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;  // setting up kernal stack
+alias syscallNumber R6;
+syscallNumber = [[PTBR + 2 * ((userSP - 5)/ 512)] * 512 + (userSP - 5) % 512];
+alias toRet R7;
+if (syscallNumber == 2) then  // Open system call
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 2;  // setting mode
+	alias filename R8;
+	filename = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
+	alias perprocess R9;
+	perprocess = ([PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 11] + 1) * 512 - 16;
+	alias cnter R10;
+	cnter = 0;
+	alias found R11;
+	found = -1;
+	while (cnter < 8) do  // finding a free per process resource table entry
+		if ([perprocess + 2 * cnter] == -1) then
+			found = cnter;
+			break;
+		endif;
+		cnter = cnter + 1;
+	endwhile;
+	if (found == -1) then
+		toRet = -3;  // process has reached the limit of its resources
+	else
+		R1 = 3;
+		R2 = filename;
+		multipush (R5, R9, R11);  // we would only be needing toret (which is not required to be backed), perprocess, userSP and found after this
+		call MOD_3;  // calling open function
+		multipop (R5, R9, R11);
+		alias fileTableIndex R12;  // open file table entry
+		fileTableIndex = R0;
+		if (fileTableIndex < 0) then
+			toRet = fileTableIndex;
+		else
+			[perprocess + 2 * found] = FILE;
+			[perprocess + 2 * found + 1] = fileTableIndex;
+			toRet = found;
+		endif;
+	endif;
+	goto label1;
+endif;
+if (syscallNumber == 3) then  // Close system call
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 3;  // setting mode
+	alias filedesc R8;  // file descriptor
+	filedesc = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
+	if (filedesc > 0 && filedesc < 8) then  // valid range
+		alias perProcessEntry R9;
+		perProcessEntry = ([PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 11] + 1) * 512 - 16 + 2 * filedesc;
+		if ([perProcessEntry] != FILE) then  // valid entry
+			toRet = -1;
+		else
+			alias fileTableIndex R10;
+			fileTableIndex = [perProcessEntry + 1];
+			R1 = 4;
+			R2 = fileTableIndex;
+			multipush (R5, R9);  // only perprocessEntry is required...
+			call MOD_3;  // calling close function in file manager module
+			multipop (R5, R9);
+			[perProcessEntry] = -1;
+			[perProcessEntry + 1] = -1;
+			toRet = 0;
+		endif;
+	else
+		toRet = -1;
+	endif;	
+	goto label1;
+endif;
+if (syscallNumber == 6) then  // Seek system call
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 6;  // setting mode
+	alias fileDesc R8;
+	alias offSet R9;
+	fileDesc = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
+	offSet = [[PTBR + 2 * ((userSP - 3)/ 512)] * 512 + (userSP - 3) % 512];
+	if (fileDesc < 0 || fileDesc > 7) then
+		toRet = -1;
+		goto label1;
+	endif;
+	alias perProcess R10;
+	perProcess = ([PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 11] + 1) * 512 - 16;
+	perProcess = perProcess + 2 * fileDesc;
+	if ([perProcess] != FILE) then
+		toRet = -1;
+		goto label1;
+	endif;
+	alias fileTableIndex R11;
+	fileTableIndex = [perProcess + 1];
+	alias inodeTableIndex R12;
+	inodeTableIndex = [OPEN_FILE_TABLE + fileTableIndex * 4];
+	R1 = 4;  // acquire inode
+	R2 = inodeTableIndex;
+	R3 = [SYSTEM_STATUS_TABLE + 1];
+	multipush (R5, R7, R11, R12, R9);  // require usersp, toret, filetableindex, inodetableindex, offset, 
+	call MOD_0;
+	multipop (R5, R7, R11, R12, R9);
+	if (R0 < 0) then
+		toRet = -1;
+		goto label1;
+	endif;
+	alias lseek R13;
+	lseek = [OPEN_FILE_TABLE + fileTableIndex * 4 + 2];
+	alias fileSize R14;	
+	if (inodeTableIndex == INODE_ROOT) then
+		fileSize = 480;
+	else
+		fileSize = [INODE_TABLE + inodeTableIndex * 16 + 2];
+	endif;
+	if (lseek + offSet < 0) then
+		R1 = 5;  // release inode
+		R2 = inodeTableIndex;
+		R3 = [SYSTEM_STATUS_TABLE + 1];
+		multipush (R5);
+		call MOD_0;
+		multipop (R5);
+		toRet = -2;
+		goto label1;	
+	endif;
+	if (offSet == 0) then
+		[OPEN_FILE_TABLE + fileTableIndex * 4 + 2] = 0;
+	else
+		if (lseek + offSet > fileSize) then
+			[OPEN_FILE_TABLE + fileTableIndex * 4 + 2] = fileSize;	
+		else 
+			[OPEN_FILE_TABLE + fileTableIndex * 4 + 2] = [OPEN_FILE_TABLE + fileTableIndex * 4 + 2] + offSet;		
+		endif;	
+	endif;
+	R1 = 5;  // release inode
+	R2 = inodeTableIndex;
+	R3 = [SYSTEM_STATUS_TABLE + 1];
+	multipush (R5);
+	call MOD_0;
+	multipop (R5);
+	toRet = 0;
+endif;
+label1:
+	[([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512)] = toRet;
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;	
+	SP = userSP;
+	ireturn;

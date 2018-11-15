@@ -1,23 +1,16 @@
 [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13] = SP;
 alias userSP R1;
-userSP=SP;
+userSP = SP;
+alias ret R2;
+ret = 0;
 SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11]*512 - 1;
-alias PhysicalPageNum R2;							//Extracting arguement 
-alias offset R3;
-alias CallNumAdd R4;
-PhysicalPageNum = [PTBR + 2 * ((userSP - 5)/ 512)];
-offset = (userSP - 5) % 512;
-CallNumAdd = (PhysicalPageNum * 512) + offset;
-alias SyscallNumber R5;
-SyscallNumber = [CallNumAdd];
+alias SyscallNumber R3;
+SyscallNumber = [[PTBR + 2 * ((userSP - 5)/ 512)] * 512 + (userSP - 5) % 512];
 if (SyscallNumber == 19) then				//SemLock
 	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 19;
-	alias sdescriptor R6;
-	alias perprocesstable R7;
-	PhysicalPageNum = [PTBR + 2 * ((userSP - 4)/ 512)];
-	offset = (userSP - 4) % 512;
-	CallNumAdd = (PhysicalPageNum * 512) + offset;
-	sdescriptor = [CallNumAdd];
+	alias sdescriptor R4;
+	alias perprocesstable R5;
+	sdescriptor = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
 	perprocesstable = ([PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11]) * 512 + (512 - 16);
 	if (sdescriptor >= 0 && sdescriptor < 8 && [perprocesstable + 2*sdescriptor] == 1) then
 		while ([SEMAPHORE_TABLE + 4 * [perprocesstable + 2*sdescriptor + 1]] != [SYSTEM_STATUS_TABLE + 1] && [SEMAPHORE_TABLE + 4 * [perprocesstable + 2*sdescriptor + 1]] != -1) do
@@ -28,31 +21,27 @@ if (SyscallNumber == 19) then				//SemLock
 			multipop(R1,R2,R3,R4,R5,R6,R7);
 		endwhile;
 		[SEMAPHORE_TABLE + 4 * [perprocesstable + 2*sdescriptor + 1]] = [SYSTEM_STATUS_TABLE + 1];
-		R0 = 0;					//return message
+		ret = 0;					//return message
 	else
-		R0 = -1;
+		ret = -1;
 	endif;
 	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 0;
-	PhysicalPageNum = [PTBR + 2 * ((userSP - 1)/ 512)];				//return address
-	offset = (userSP - 1) % 512;
-	CallNumAdd = (PhysicalPageNum * 512) + offset;
-	[CallNumAdd] = R0;												//return value
+	alias physicalAddrRetVal R10;
+	physicalAddrRetVal = ([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512);
+	[physicalAddrRetVal] = ret;
 	SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13];
 	ireturn;
 endif;
 if (SyscallNumber == 20) then				//SemUnLock
 	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 20;
-	alias sdescriptor R6;
-	alias perprocesstable R7;
-	PhysicalPageNum = [PTBR + 2 * ((userSP - 4)/ 512)];
-	offset = (userSP - 4) % 512;
-	CallNumAdd = (PhysicalPageNum * 512) + offset;
-	sdescriptor = [CallNumAdd];
+	alias sdescriptor R4;
+	alias perprocesstable R5;
+	sdescriptor = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
 	perprocesstable = ([PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11]) * 512 + (512 - 16);
 	if (sdescriptor >= 0 && sdescriptor < 8 && [perprocesstable + 2*sdescriptor] == 1) then
 		if ([SEMAPHORE_TABLE + 4 * [perprocesstable + 2*sdescriptor + 1]] != -1) then
 			if ([SEMAPHORE_TABLE + 4 * [perprocesstable + 2*sdescriptor + 1]] != [SYSTEM_STATUS_TABLE + 1]) then
-				R0 = -2;
+				ret = -2;
 			else
 				[SEMAPHORE_TABLE + 4 * [perprocesstable + 2*sdescriptor + 1]] = -1;
 				alias counter R8;
@@ -64,17 +53,16 @@ if (SyscallNumber == 20) then				//SemUnLock
 					endif;
 					counter = counter + 1;
 				endwhile;
-				R0 = 0;
+				ret = 0;
 			endif;
 		endif;
 	else
-		R0 = -1;
+		ret = -1;
 	endif;
 	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 0;
-	PhysicalPageNum = [PTBR + 2 * ((userSP - 1)/ 512)];				//return address
-	offset = (userSP - 1) % 512;
-	CallNumAdd = (PhysicalPageNum * 512) + offset;
-	[CallNumAdd] = R0;
+	alias physicalAddrRetVal R10;
+	physicalAddrRetVal = ([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512);
+	[physicalAddrRetVal] = ret;
 	SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13];
 	ireturn;
 endif;

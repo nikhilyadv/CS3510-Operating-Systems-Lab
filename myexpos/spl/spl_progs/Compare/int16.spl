@@ -1,0 +1,160 @@
+// Newusr, Remusr, Setpwd, Getuname and Getuid system calls
+// Assumptions: Never use R0 - R4. As they'll be reserved for module calls.
+alias userSP R5;
+userSP = SP;
+alias processTableEntry R8;
+processTableEntry = PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16;
+[processTableEntry + 13] = SP;  // saving user stack value
+SP = [processTableEntry + 11] * 512 - 1;  // setting up kernal stack
+alias syscallNumber R6;
+syscallNumber = [[PTBR + 2 * ((userSP - 5)/ 512)] * 512 + (userSP - 5) % 512];
+alias toRet R7;
+toRet = 0; // Sanity :)
+if (syscallNumber == 22) then  // New user system call
+	[processTableEntry + 9] = 22;  // setting mode
+	if ([SYSTEM_STATUS_TABLE + 1] != 2 || [SYSTEM_STATUS_TABLE] != 1) then  // if the current user is not root or if the current process is not shell
+		toRet = -2;
+		goto label1;
+	endif;
+	alias username R11;
+	username = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
+	alias cnter R9;
+	cnter = 0;
+	alias found R10;
+	found = -1;
+	while (cnter < 16) do
+		if ([USER_TABLE + cnter * 2] == username) then
+			break;
+		endif;
+		if ([USER_TABLE + cnter * 2] == -1 && found == -1) then
+			found = cnter;
+		endif;
+		cnter = cnter + 1;
+	endwhile;
+	if (cnter != 16) then  // i.e. username already exists
+		toRet = -1;
+		goto label1;
+	endif;
+	if (found == -1) then
+		toRet = -3;
+		goto label1;
+	endif;
+	alias password R12;
+	password = [[PTBR + 2 * ((userSP - 3)/ 512)] * 512 + (userSP - 3) % 512];
+	encrypt R12;
+	[USER_TABLE + found * 2] = username;
+	[USER_TABLE + found * 2 + 1] = password;
+	goto label1;
+endif;
+if (syscallNumber == 23) then  // remove user system call
+	[processTableEntry + 9] = 23;  // setting mode
+	if ([SYSTEM_STATUS_TABLE + 1] != 2 || [SYSTEM_STATUS_TABLE] != 1) then  // if the current user is not root or if the current process is not shell
+		toRet = -2;
+		goto label1;
+	endif;
+	alias username R10;
+	username = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
+	if (username == "root" || username == "kernel") then
+		toRet = -2;
+		goto label1;
+	endif;
+	alias cnter R9;
+	cnter = 0;
+	alias found R11;
+	found = -1;
+	while (cnter < 16) do
+		if ([USER_TABLE + cnter * 2] == username) then
+			found = cnter;
+			break;
+		endif;
+		cnter = cnter + 1;
+	endwhile;
+	if (cnter == 16) then  // i.e. username doesn't exist
+		toRet = -1;
+		goto label1;
+	endif;
+	cnter = 0;
+	while (cnter < 60) do
+		if ([ROOT_FILE + 8 * cnter + 3] == username) then
+			break;
+		endif;
+		cnter = cnter + 1;
+	endwhile;
+	if (cnter != 60) then
+		toRet = -3;
+		goto label1;
+	endif;
+	[USER_TABLE + found * 2] = -1;
+	[USER_TABLE + found * 2 + 1] = -1;
+	goto label1;
+endif;
+if (syscallNumber == 24) then  // set password user system call
+	[processTableEntry + 9] = 24;  // setting mode
+	if ([SYSTEM_STATUS_TABLE + 1] != 2) then  // if the current process is not shell
+		toRet = -1;
+		goto label1;
+	endif;
+	alias username R11;
+	username = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
+	alias cnter R9;
+	cnter = 0;
+	alias found R10;
+	found = -1;
+	while (cnter < 16) do
+		if ([USER_TABLE + cnter * 2] == username) then
+			found = cnter;
+			break;
+		endif;
+		cnter = cnter + 1;
+	endwhile;
+	if (found == -1) then
+		toRet = -2;
+		goto label1;
+	endif;
+	// A user is permitted to change only its own password. The privileged user "root" has permission to change the password of any user. 
+	if ([SYSTEM_STATUS_TABLE] != found) then
+		if ([SYSTEM_STATUS_TABLE] != 1) then
+			toRet = -1;
+			goto label1;
+		endif;
+	endif;
+	alias password R12;
+	password = [[PTBR + 2 * ((userSP - 3)/ 512)] * 512 + (userSP - 3) % 512];
+	encrypt R12;
+	[USER_TABLE + found * 2 + 1] = password;
+	goto label1;
+endif;
+if (syscallNumber == 25) then  // get username from userid system call
+	[processTableEntry + 9] = 25;  // setting mode
+	alias userid R11;
+	userid = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
+	if (userid < 0 || userid > 15) then
+		toRet = -1;
+		goto label1;
+	endif;
+	toRet = [USER_TABLE + userid * 2];
+	goto label1;	
+endif;
+if (syscallNumber == 26) then  // get userid from username system call
+	[processTableEntry + 9] = 26;  // setting mode
+	alias username R11;
+	username = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
+	alias cnter R9;
+	cnter = 0;
+	alias found R10;
+	found = -1;
+	while (cnter < 16) do
+		if ([USER_TABLE + cnter * 2] == username) then
+			found = cnter;
+			break;
+		endif;
+		cnter = cnter + 1;
+	endwhile;
+	toRet = found;
+	goto label1;
+endif;
+label1:
+	[([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512)] = toRet;
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;	
+	SP = userSP;
+	ireturn;

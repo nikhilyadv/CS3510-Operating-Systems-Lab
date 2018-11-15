@@ -1,66 +1,67 @@
-loadi(63,13);
+//load(pagenumber,blocknumber)
+loadi(61, 2);	//disk free list
+loadi(59, 3);	//inode table
+loadi(60, 4);
+loadi(62, 5);	//root file
+loadi(65, 7);	//Init/Login
+loadi(66, 8);
+loadi(67, 9);	//shell
+loadi(68,10);
+loadi(63,13);	//Library
 loadi(64,14);	
-loadi(65,7);
-loadi(66,8);
-loadi(22,35);
-loadi(23,36);
-loadi(2, 15);
-loadi(3, 16);
-loadi(4, 17);
-loadi(5, 18);
-loadi(16,29);
+loadi(2 ,15);	//Exception Handler
+loadi(3 ,16);
+loadi(4 ,17);	//Timer
+loadi(5 ,18);
+loadi(6 ,19);	//disk interrupt
+loadi(7 ,20);
+loadi(8 ,21);	//Console interupt
+loadi(9 ,22);
+loadi(10,23);	//INT 4
+loadi(11,24);
+loadi(12,25);	//INT 5
+loadi(13,26);
+loadi(14,27);	//INT 6
+loadi(15,28);
+loadi(16,29);	//INT 7
 loadi(17,30);
-loadi(83,69);
-loadi(50,63);
-loadi(51,64);
+loadi(18,31);	//INT 8
+loadi(19,32);
+loadi(20,33);	//INT 9
+loadi(21,34);
+loadi(22,35);	//INT 10
+loadi(23,36);
+loadi(24,37);	//INT 11
+loadi(25,38);
+loadi(26,39);	//INT 12
+loadi(27,40);
+loadi(28,41);	//INT 13
+loadi(29,42);
+loadi(30,43);	//INT 14
+loadi(31,44);		
+loadi(32,45);	//INT 15
+loadi(33,46);
+loadi(34,47);	//INT 16
+loadi(35,48);
+loadi(36,49);	//INT 17
+loadi(37,50);
+loadi(38,51);	//INT 18
+loadi(39,52);
 loadi(40,53);	//Mod 0
 loadi(41,54);
-loadi(48,61);	//Mod 4
-loadi(49,62);
-loadi(8,21);	//Console interupt
-loadi(9,22);
-loadi(14,27);		//INT 6
-loadi(15,28);
-loadi(20,33);		//INT 9
-loadi(21,34);
 loadi(42,55);	//Mod 1
 loadi(43,56);
 loadi(44,57);	//Mod 2
 loadi(45,58);
-loadi(59,3);		//inode table
-loadi(60,4);
-loadi(6,19);		//disk interrupt
-loadi(7,20);
-loadi(61,2);		//disk free list
-loadi(18,31);		//fork
-loadi(19,32);
-loadi(24,37);		//interrupt 11
-loadi(25,38);
-loadi(28,41);		//interrupt 13
-loadi(29,42);
-loadi(30,43);		//interrupt 14
-loadi(31,44);		
-loadi(32,45);		//interrupt 15
-loadi(33,46);
-loadi(10,23);		//interrupt 4
-loadi(11,24);
-loadi(62,5);		//root file
-loadi(12,25);		//interrupt 5
-loadi(13,26);		
-loadi(46,59);		//Mod 3
+loadi(46,59);	//Mod 3
 loadi(47,60);
-loadi(26,39);		//interrupt 12
-loadi(27,40);
-loadi(34,47);		//interrupt 16
-loadi(35,48);
-loadi(36,49);		//interrupt 17
-loadi(37,50);
-loadi(67,9);		//shell
-loadi(68,10);
-loadi(52,65);		//MOD 6
+loadi(48,61);	//Mod 4
+loadi(49,62);
+loadi(50,63);	//MOD 5
+loadi(51,64);
+loadi(52,65);	//MOD 6
 loadi(53,66);
-loadi(38,51);		//interrupt 18
-loadi(39,52);
+				//MOD 7 already loaded by os
 alias counter R1;
 counter = 1;
 while(counter < 16) do
@@ -68,7 +69,6 @@ while(counter < 16) do
 	[PROCESS_TABLE + (counter*16)] = 0;						//Tick
 	counter = counter + 1;
 endwhile;
-[TERMINAL_STATUS_TABLE] = 0;
 //init\login
 PTBR = PAGE_TABLE_BASE + 20;
 PTLR = 10;
@@ -122,7 +122,7 @@ PTLR = 10;
 [PTBR+15] = "0000";
 [PTBR+16] = 78;
 [PTBR+17] = "0110";
-[PTBR+18] = 79;								//a process which forks must have 2 stack pages int8
+[PTBR+18] = 79;						//a process which forks must have 2 stack pages int8
 [PTBR+19] = "0110";
 [PROCESS_TABLE + 33] = 2;
 [PROCESS_TABLE + 34] = 1;					//ppid
@@ -134,61 +134,79 @@ PTLR = 10;
 [PROCESS_TABLE + 46] = PAGE_TABLE_BASE + 40;
 [PROCESS_TABLE + 47] = 10;
 [78*512] = [67*512+1];
+
+[TERMINAL_STATUS_TABLE] = 0;
+[DISK_STATUS_TABLE] = 0;				//Disk free
+
+[SYSTEM_STATUS_TABLE + 2] = 47;
+[SYSTEM_STATUS_TABLE + 3] = 0;
+[SYSTEM_STATUS_TABLE + 4] = 0;
+[SYSTEM_STATUS_TABLE + 5] = -1;
+
 alias pptable R2;
-pptable = (80) * 512 + (512 - 16);		//preprocess table
+pptable = (77) * 512 + (512 - 16);		//preprocess table Init
 counter = 0;
 while(counter < 16) do
 	[pptable+counter] = -1;
 	counter = counter + 1;
 endwhile;
+pptable = (80) * 512 + (512 - 16);		//preprocess table shell
+counter = 0;
+while(counter < 16) do
+	[pptable+counter] = -1;
+	counter = counter + 1;
+endwhile;
+
 counter = 0;
 while (counter < 32) do					//semaphore table
 	[SEMAPHORE_TABLE + 4 * counter] = -1;
 	[SEMAPHORE_TABLE + 4 * counter + 1] = 0;
 	counter = counter + 1;
 endwhile;
+
 counter = 0;
 while(counter < 81) do
 	[MEMORY_FREE_LIST + counter] = 1;
 	counter = counter + 1;
 endwhile;
-[MEMORY_FREE_LIST + 63] = 1;
-[MEMORY_FREE_LIST + 64] = 1;
-[SYSTEM_STATUS_TABLE + 2] = 47;
-[SYSTEM_STATUS_TABLE + 3] = 0;
-[SYSTEM_STATUS_TABLE + 4] = 0;
-[SYSTEM_STATUS_TABLE + 5] = -1;
 while(counter < 128) do					//count free pages
 	[MEMORY_FREE_LIST + counter] = 0;
 	counter = counter + 1;
 endwhile;
-[DISK_STATUS_TABLE] = 0;				//Disk free
+
 counter = 0;						//disk map table for shell
 while(counter < 10) do
 	[DISK_MAP_TABLE + 20 + counter] = -1;
 	counter = counter + 1;
 endwhile;
-[DISK_MAP_TABLE + 20 + 4] = 67;
-[DISK_MAP_TABLE + 20 + 5] = 68;
+[DISK_MAP_TABLE + 20 + 4] = 9;
+[DISK_MAP_TABLE + 20 + 5] = 10;
+
 counter = 0;
+alias temp R3;
 while (counter < 60) do									//file status table
-	[FILE_STATUS_TABLE + counter * 4] = -1;
-	[FILE_STATUS_TABLE + counter * 4 + 1] = -1;					
+	temp = FILE_STATUS_TABLE + counter * 4;
+	[temp] = -1;
+	[temp + 1] = -1;					
 	counter = counter + 1;
 endwhile;
+
 counter = 0;
 while (counter < 4) do									//buffer table
-	[BUFFER_TABLE + 4 * counter] = -1;
-	[BUFFER_TABLE + 4 * counter + 1] = 0;
-	[BUFFER_TABLE + 4 * counter + 2] = -1;
+	temp = BUFFER_TABLE + 4 * counter;
+	[temp] = -1;
+	[temp + 1] = 0;
+	[temp + 2] = -1;
 	counter = counter + 1;
 endwhile;
+
 counter = 0;
 while (counter < MAX_OPENFILE_NUM) do
-	[OPEN_FILE_TABLE + 4 * counter] = -1;
-	[OPEN_FILE_TABLE + 4 * counter + 1] = 0;
+	temp = OPEN_FILE_TABLE + 4 * counter;
+	[temp] = -1;
+	[temp + 1] = 0;
 	counter = counter + 1;
 endwhile;
 //password of root is root
-//print("Boot MOdule");
+//print("Boot Module");
 return;

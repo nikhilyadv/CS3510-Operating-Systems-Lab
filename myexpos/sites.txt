@@ -1,0 +1,87 @@
+MODS -
+	http://exposnitc.github.io/os_modules/Module_0.html
+	http://exposnitc.github.io/os_modules/Module_1.html
+	http://exposnitc.github.io/os_modules/Module_2.html
+	http://exposnitc.github.io/os_modules/Module_3.html
+	http://exposnitc.github.io/os_modules/Module_4.html
+	http://exposnitc.github.io/os_modules/Module_5.html
+	http://exposnitc.github.io/os_modules/Module_6.html
+	http://exposnitc.github.io/os_modules/Module_7.html
+
+INT -
+	4
+		http://exposnitc.github.io/os_design-files/create.html
+		http://exposnitc.github.io/os_design-files/delete.html
+	5
+		http://exposnitc.github.io/os_design-files/seek.html
+		http://exposnitc.github.io/os_design-files/open.html
+		http://exposnitc.github.io/os_design-files/close.html
+	6
+		http://exposnitc.github.io/os_design-files/read.html
+	7
+		http://exposnitc.github.io/os_design-files/write.html
+	8
+		http://exposnitc.github.io/os_design-files/fork.html
+	9
+		http://exposnitc.github.io/os_design-files/exec.html
+	10
+		http://exposnitc.github.io/os_design-files/exit.html
+	11
+		http://exposnitc.github.io/os_design-files/proc_misc.html#getpid
+		http://exposnitc.github.io/os_design-files/proc_misc.html#getppid
+		http://exposnitc.github.io/os_design-files/synchronization_algos.html#wait
+		http://exposnitc.github.io/os_design-files/synchronization_algos.html#signal
+	12
+		http://exposnitc.github.io/os_design-files/multiusersyscalls.html#logout
+	13
+		http://exposnitc.github.io/os_design-files/semaphore_algos.html#semget
+		http://exposnitc.github.io/os_design-files/semaphore_algos.html#semrelease
+	14
+		http://exposnitc.github.io/os_design-files/semaphore_algos.html#semlock
+		http://exposnitc.github.io/os_design-files/semaphore_algos.html#semunlock
+	15
+		http://exposnitc.github.io/os_design-files/shutdown.html
+	16
+		http://exposnitc.github.io/os_design-files/multiusersyscalls.html#newusr
+		http://exposnitc.github.io/os_design-files/multiusersyscalls.html#remusr
+		http://exposnitc.github.io/os_design-files/multiusersyscalls.html#setpwd
+		http://exposnitc.github.io/os_design-files/multiusersyscalls.html#getuname
+		http://exposnitc.github.io/os_design-files/multiusersyscalls.html#getuid
+	17
+		http://exposnitc.github.io/os_design-files/multiusersyscalls.html#login
+
+Memory and Disk implementation
+	http://exposnitc.github.io/os_implementation.html
+
+Memory data structures - Open file table, File status table, Semaphore table, Disk Status table, Buffer table, System status table, Terminal status table, Memory free list -
+	http://exposnitc.github.io/os_design-files/mem_ds.html
+
+Disk data structures - Inode table, Disk free list, Root file, User table
+Process table, Page table, Disk Map table -
+	http://exposnitc.github.io/os_design-files/process_table.html
+
+Predefined constants -
+	http://exposnitc.github.io/support_tools-files/constants.html
+
+OS startup - 
+	http://exposnitc.github.io/os_design-files/misc.html#os_startup
+
+Exception Handler -
+	http://exposnitc.github.io/os_design-files/exe_handler.html
+	
+	http://exposnitc.github.io/arch_spec-files/interrupts_exception_handling.html
+
+Timer Interrupt Handler -
+	http://exposnitc.github.io/os_design-files/timer.html
+
+Disk Interrupt Handler -
+	http://exposnitc.github.io/os_design-files/disk_interrupt.html
+
+Console/Terminal Interrupt Handler -
+	http://exposnitc.github.io/os_design-files/term_handler.html
+
+SPL - 
+	http://exposnitc.github.io/support_tools-files/spl.html
+
+Expl - 
+	http://exposnitc.github.io/os_spec-files/dynamicmemoryroutines.html

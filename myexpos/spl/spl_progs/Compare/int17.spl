@@ -1,0 +1,51 @@
+// Login System Call
+// Always make register check in the end.
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 27;
+alias userSP R5;
+userSP = SP;
+[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13] = SP;
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;
+alias toRet R7;
+toRet = 0;  // sanity
+if ([SYSTEM_STATUS_TABLE + 1] != 1) then // login process has pid 1
+	toRet = -2;
+	goto label1;
+endif;
+alias username R6;
+username = ([PTBR + 2 * ((userSP - 4)/ 512)] * 512) + (userSP - 4) % 512;
+username = [username];
+alias password R8;
+password = [[PTBR + 2 * ((userSP - 3) / 512)] * 512 + ((userSP - 3) % 512)];
+alias found R9;
+found = -1;
+alias cnter R10;
+cnter = 0;
+while (cnter < 16) do
+	if ([USER_TABLE + cnter * 2] == username) then
+		found = cnter;
+		break;
+	endif;
+	cnter = cnter + 1;
+endwhile;
+if (found == -1) then
+	toRet = -1;
+	goto label1;
+endif;
+encrypt R8;  // encrypting the password
+if ([USER_TABLE + found * 2 + 1] != password) then
+	toRet = -1;
+	goto label1;	
+endif;
+[PROCESS_TABLE + (2 * 16) + 4] = CREATED;  // state of shell process (pid = 2)
+[PROCESS_TABLE + (2 * 16) + 3] = found;  // setting userid
+[PROCESS_TABLE + 16 + 4] = WAIT_PROCESS;  // login process should wait until shell terminates.
+[PROCESS_TABLE + 16 + 5] = 2; 
+[SYSTEM_STATUS_TABLE] = found;  // setting current_user_id
+multipush (R5, R7);  // need usersp and toRet.
+call MOD_5;
+multipop (R5, R7); 
+label1:
+	[[PTBR + 2 * ((userSP - 1) / 512)] * 512 + ((userSP - 1) % 512)] = toRet;
+	SP = userSP;
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;
+	ireturn;

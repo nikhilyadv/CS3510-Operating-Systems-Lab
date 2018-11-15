@@ -1,0 +1,68 @@
+// Shutdown System Calls.
+alias userSP R0;
+userSP = SP;
+[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13] = SP;  // saving user stack value
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;  // setting up kernal stack
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 21;
+// Shutdown system call can be invoked only from the shell process of the root user. If the current process is not shell (PID in the process table is not equal to 1) or the current user is not root user (USERID in the process table is not equal to 1) then store -1 as return value.
+if (([SYSTEM_STATUS_TABLE + 1] != 2) || ([PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 3] != 1)) then
+	[([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512)] = -1;
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;	
+	SP = userSP;
+	ireturn;
+endif;
+// Commit the changes made in the memory copies of the inode table (along with user table), the root file and the disk free list by storing them back to the disk invoking the Disk Store function of device manager module.
+multipush (R0);  // inode
+R1 = 1;
+R2 = [SYSTEM_STATUS_TABLE + 1];
+R3 = 59;
+R4 = 3;
+call MOD_4;
+multipop (R0);
+multipush (R0); 
+R1 = 1;
+R2 = [SYSTEM_STATUS_TABLE + 1];
+R3 = 60;
+R4 = 4;
+call MOD_4;
+multipop (R0);  // root file
+multipush (R0);
+R1 = 1;
+R2 = [SYSTEM_STATUS_TABLE + 1];
+R3 = 62;
+R4 = 5;
+call MOD_4;
+multipop (R0);
+multipush (R0);  // disk free list
+R1 = 1;
+R2 = [SYSTEM_STATUS_TABLE + 1];
+R3 = 61;
+R4 = 2;
+call MOD_4;
+multipop (R0);
+multipush (R0);
+R1 = 5;  // calling kill all.
+R2 = [SYSTEM_STATUS_TABLE + 1];
+call MOD_1;
+multipop (R0);
+alias cnter R5;
+cnter = 0;
+while (cnter < 4) do
+	if ([BUFFER_TABLE + cnter * 4] != -1) then
+		if ([BUFFER_TABLE + cnter * 4 + 1] == 1) then
+			multipush (R0, R5);
+			R1 = 1;
+			R2 = [SYSTEM_STATUS_TABLE + 1];
+			R3 = 71 + (cnter);
+			R4 = [BUFFER_TABLE + cnter * 4]; 
+			call MOD_4;
+			multipop (R0, R5);
+		endif;
+	endif;
+	cnter = cnter + 1;
+endwhile;
+[([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512)] = 0;
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;
+SP = userSP;
+// maybe the above 3 lines are unnecessary
+halt;

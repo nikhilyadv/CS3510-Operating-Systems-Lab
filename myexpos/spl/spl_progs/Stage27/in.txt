@@ -27,5 +27,10 @@ load --exhandler ../spl/spl_progs/Stage27/exceptionhandler.xsm
 load --init ../expl/samples/login.xsm
 load --shell ../expl/samples/shell3.xsm
 load --idle ../expl/idle.xsm
-load --os ../spl/spl_progs/Stage27/os.xsm
+load --os ../spl/spl_progs/Test/os.xsm
 load --library ../expl/library.lib
+load --data ../sample.dat
+load --data ../numbers.dat
+load --exec ../expl/samples/ls.xsm
+load --exec ../expl/samples/cat.xsm
+load --exec ../expl/samples/rm.xsm

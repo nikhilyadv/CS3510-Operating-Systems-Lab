@@ -1,0 +1,67 @@
+//  12 -> R0 (userSP),  16 -> R1 (syscallNumber)
+//  20 -> R2 (pid) LOCAL
+//	45 -> R2 (cnter) LOCAL
+//  Implements Wait, Signal, Getpid, Getppid system calls
+//
+//
+//
+//
+//
+//
+alias userSP R0;
+userSP = SP;
+[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13] = SP;  // saving user stack value
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;  // setting up kernal stack
+alias syscallNumber R1;
+syscallNumber = [[PTBR + 2 * ((userSP - 5)/ 512)] * 512 + (userSP - 5) % 512];
+if (syscallNumber == 13) then  // Wait System Call
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 13;  // setting mode
+	alias pid R2;  // pid of the process to wait
+	pid = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
+	if (pid < 0 || pid >= 16) then  // if not in valid range, then error
+		[([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512)] = -1;
+		[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;	
+		SP = userSP;
+		ireturn;	
+	endif;
+	if (pid == [SYSTEM_STATUS_TABLE + 1] || [PROCESS_TABLE + pid * 16 + 4] == TERMINATED) then  // a process should not wait for itself and for a terminated process
+		[([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512)] = -1;
+		[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;	
+		SP = userSP;
+		ireturn;	
+	endif;
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 4] = WAIT_PROCESS;	
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 5] = pid;	
+	multipush (R0, R1, R2);
+	call MOD_5;
+	// The following step is executed only when the scheduler runs this process again, which in turn happens only when the state of the process becomes READY again.
+	multipop (R0, R1, R2);
+	[([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512)] = 0;
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;
+endif;
+if (syscallNumber == 14) then  // Signal System Call
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 14;  // setting mode
+	alias cnter R2;
+	cnter = 0;
+	while (cnter < 16) do
+		if ([PROCESS_TABLE + cnter * 16 + 4] == WAIT_PROCESS && [PROCESS_TABLE + cnter * 16 + 5] == [SYSTEM_STATUS_TABLE + 1]) then
+			[PROCESS_TABLE + cnter * 16 + 4] = READY;
+			// next word is not updated (assumption)
+		endif;
+		cnter = cnter + 1;
+	endwhile;
+	[([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512)] = 0;
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;
+endif;
+if (syscallNumber == 11) then  // GetPID System Call
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 11;  // setting mode
+	[([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512)] = [SYSTEM_STATUS_TABLE + 1];
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;
+endif;
+if (syscallNumber == 12) then  // Get PID of the parent of the current process System Call
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 12;  // setting mode
+	[([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512)] = [PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 2]; // ppid field
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;
+endif;
+SP = userSP;
+ireturn;

@@ -1,0 +1,75 @@
+////////////Device Manager
+////////Note: All funcitons in Device Manager return nothing.
+multipush (R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12);
+alias functionNum R1;
+alias currentPID R2;
+if (functionNum == 1) then  // disk store
+// Stores the contents of the page into the disk block.
+	alias pgnumber R3;
+	alias bnumber R4;
+	multipush (R2, R3, R4);
+	R1 = 3;  // acquire disk
+	R2 = currentPID;
+	call MOD_0;
+	multipop (R2, R3, R4);
+	[DISK_STATUS_TABLE + 1] = 1;  // disk store bit
+	[DISK_STATUS_TABLE + 2] = pgnumber;
+	[DISK_STATUS_TABLE + 3] = bnumber;
+	store (pgnumber, bnumber);
+	[PROCESS_TABLE + currentPID * 16 + 4] = WAIT_DISK;
+	// invoking context switch module
+	call MOD_5;
+	goto label1;
+endif;
+if (functionNum == 2) then  // disk load
+	alias pgnumber R3;
+	alias bnumber R4;
+	multipush (R2, R3, R4);
+	R1 = 3;  // acquire disk
+	R2 = currentPID;
+	call MOD_0;
+	multipop (R2, R3, R4);
+	[DISK_STATUS_TABLE + 1] = 0;
+	[DISK_STATUS_TABLE + 2] = pgnumber;
+	[DISK_STATUS_TABLE + 3] = bnumber;
+	load (pgnumber, bnumber);
+	[PROCESS_TABLE + currentPID * 16 + 4] = WAIT_DISK;
+	// invoking context switch module
+	call MOD_5;
+	goto label1;
+endif;
+if (functionNum == 3) then  // print 
+	// subsequent code is to call acquire terminal
+	multipush (R2, R3);
+	R1 = 8;
+	R2 = currentPID;
+	call MOD_0;
+	multipop (R2, R3);
+	print R3;
+	// subsequent code is to call release terminal
+	R1 = 9;
+	R2 = currentPID;
+	call MOD_0;
+	goto label1;
+endif;
+if (functionNum == 4) then  // read.
+	// subsequent code is to call acquire terminal
+	multipush (R2, R3);
+	R1 = 8;
+	R2 = [SYSTEM_STATUS_TABLE + 1];
+	call MOD_0;
+	multipop (R2, R3);
+	read;
+	[PROCESS_TABLE + currentPID * 16 + 4] = WAIT_TERMINAL;
+	// invoking context switch module
+	multipush (R2, R3);
+	call MOD_5;
+	multipop (R2, R3);
+	alias logicAddr R3;
+	logicAddr = [PTBR + 2 * (logicAddr / 512)] * 512 + (logicAddr % 512);  // now has physical address
+	[logicAddr] = [PROCESS_TABLE + currentPID * 16 + 8];  // 8'th entry has input buffer.
+	goto label1;
+endif;
+label1:
+multipop (R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12);
+return;

@@ -1,0 +1,96 @@
+cd /home/tyrion/CS3510-Operating-Systems-Lab/myexpos/
+cd spl/
+./spl spl_progs/Test/mod0.spl 
+./spl spl_progs/Test/mod1.spl 
+./spl spl_progs/Test/mod2.spl 
+./spl spl_progs/Test/mod3.spl 
+./spl spl_progs/Test/mod4.spl 
+./spl spl_progs/Test/mod5.spl 
+./spl spl_progs/Test/mod6.spl 
+./spl spl_progs/Test/mod7.spl 
+./spl spl_progs/Test/int4.spl 
+./spl spl_progs/Test/int5.spl 
+./spl spl_progs/Test/int6.spl 
+./spl spl_progs/Test/int7.spl 
+./spl spl_progs/Test/int8.spl 
+./spl spl_progs/Test/int9.spl 
+./spl spl_progs/Test/int10.spl 
+./spl spl_progs/Test/int11.spl 
+./spl spl_progs/Test/int12.spl 
+./spl spl_progs/Test/int13.spl 
+./spl spl_progs/Test/int14.spl 
+./spl spl_progs/Test/int15.spl 
+./spl spl_progs/Test/int16.spl 
+./spl spl_progs/Test/int17.spl 
+./spl spl_progs/Test/int18.spl 
+./spl spl_progs/Test/diskinterrupt.spl 
+./spl spl_progs/Test/consoleinterupt.spl 
+./spl spl_progs/Test/timer.spl 
+./spl spl_progs/Test/exceptionhandler.spl 
+./spl spl_progs/Test/os.spl
+cd ../expl
+./expl samples/shell3.expl
+./expl samples/ls.expl
+./expl samples/rm.expl
+./expl samples/cat.expl
+./expl samples/idle.expl
+./expl samples/login.expl
+./expl samples/s27a5.expl
+./expl samples/m_sort.expl
+./expl samples/m_merge.expl
+./expl samples/m_store.expl
+./expl samples/s27a3.expl
+./expl samples/s27a33.expl
+./expl samples/msortc.expl
+./expl samples/msorts.expl
+cd ../xfs-interface
+./xfs-interface
+fdisk
+load --module 0 ../spl/spl_progs/Test/mod0.xsm
+load --module 1 ../spl/spl_progs/Test/mod1.xsm
+load --module 2 ../spl/spl_progs/Test/mod2.xsm
+load --module 3 ../spl/spl_progs/Test/mod3.xsm
+load --module 4 ../spl/spl_progs/Test/mod4.xsm
+load --module 5 ../spl/spl_progs/Test/mod5.xsm
+load --module 6 ../spl/spl_progs/Test/mod6.xsm
+load --module 7 ../spl/spl_progs/Test/mod7.xsm
+load --int=4 ../spl/spl_progs/Test/int4.xsm
+load --int=5 ../spl/spl_progs/Test/int5.xsm
+load --int=6 ../spl/spl_progs/Test/int6.xsm
+load --int=7 ../spl/spl_progs/Test/int7.xsm
+load --int=8 ../spl/spl_progs/Test/int8.xsm
+load --int=9 ../spl/spl_progs/Test/int9.xsm
+load --int=10 ../spl/spl_progs/Test/int10.xsm
+load --int=11 ../spl/spl_progs/Test/int11.xsm
+load --int=12 ../spl/spl_progs/Test/int12.xsm
+load --int=13 ../spl/spl_progs/Test/int13.xsm
+load --int=14 ../spl/spl_progs/Test/int14.xsm
+load --int=15 ../spl/spl_progs/Test/int15.xsm
+load --int=16 ../spl/spl_progs/Test/int16.xsm
+load --int=17 ../spl/spl_progs/Test/int17.xsm
+load --int=18 ../spl/spl_progs/Test/int18.xsm
+load --int=disk ../spl/spl_progs/Test/diskinterrupt.xsm
+load --int=console ../spl/spl_progs/Test/consoleinterupt.xsm
+load --int=timer ../spl/spl_progs/Test/timer.xsm
+load --exhandler ../spl/spl_progs/Test/exceptionhandler.xsm
+load --init ../expl/samples/login.xsm
+load --shell ../expl/samples/shell3.xsm
+load --idle ../expl/idle.xsm
+load --os ../spl/spl_progs/Test/os.xsm
+load --library ../expl/library.lib
+load --data ../sample.dat
+load --data ../numbers.dat
+load --exec ../expl/samples/ls.xsm
+load --exec ../expl/samples/cat.xsm
+load --exec ../expl/samples/rm.xsm
+load --exec ../expl/samples/s27a5.xsm
+load --exec ../expl/samples/m_sort.xsm
+load --exec ../expl/samples/m_merge.xsm
+load --exec ../expl/samples/m_store.xsm
+load --exec ../expl/samples/s27a3.xsm
+load --exec ../expl/samples/s27a33.xsm
+load --exec ../expl/samples/msortc.xsm
+load --exec ../expl/samples/msorts.xsm
+exit
+cd ../xsm
+./xsm 

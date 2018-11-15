@@ -1,0 +1,23 @@
+// Logout System Call
+// Always make register check in the end.
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 28;
+alias userSP R5;
+userSP = SP;
+[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13] = SP;
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;
+if ([SYSTEM_STATUS_TABLE + 1] != 2) then // shell process has pid 1
+	[[PTBR + 2 * ((userSP - 1) / 512)] * 512 + ((userSP - 1) % 512)] = -1;
+	SP = userSP;
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;
+	ireturn;
+endif;
+R1 = 5;  // call kill_all processes
+R2 = [SYSTEM_STATUS_TABLE + 1];
+call MOD_1;	 // usersp isn't getting used again...
+[PROCESS_TABLE + (2 * 16) + 4] = TERMINATED;
+[[PAGE_TABLE_BASE + (2 * 20) + 16] * 512] = [[PAGE_TABLE_BASE + (2 * 20) + 8] * 512 + 1];  // placing entry point to the top of the stack
+[PROCESS_TABLE + (2 * 16) + 13] = 8 * 512;   // resetting usersp field
+[PROCESS_TABLE + 16 + 4] = READY;  // wake up the login process
+[SYSTEM_STATUS_TABLE] = 0;  // back to 0 (kernel)
+call MOD_5;
+	

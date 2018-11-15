@@ -13,7 +13,7 @@ begin
 			temp=exposcall("Write",-2,r);
 		endif;
 		temp=exposcall("Seek",fd,7);
-		counter = counter + 2;
+		counter = counter + 1;
 	endwhile;
     return 0;
 end

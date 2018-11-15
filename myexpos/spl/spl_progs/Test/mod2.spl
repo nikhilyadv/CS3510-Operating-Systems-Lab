@@ -1,16 +1,18 @@
 alias functionNum R1;
 if (functionNum == 1) then			//Get Free Page
 	[SYSTEM_STATUS_TABLE + 3] = [SYSTEM_STATUS_TABLE + 3] + 1;	//wait mem count
-	while ([SYSTEM_STATUS_TABLE + 2] == 0) do
+	if ([SYSTEM_STATUS_TABLE + 2] == 0) then
 		multipush(R1);
 		R1 = 1;
 		R2 = [SYSTEM_STATUS_TABLE + 1];
 		call MOD_6;
 		multipop(R1);
+	endif;
+	while ([SYSTEM_STATUS_TABLE + 2] == 0) do
 		[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 4] = WAIT_MEM;
-		multipush(R1,R2);
+		multipush(R1);
 		call MOD_5;
-		multipop(R1,R2);
+		multipop(R1);
 	endwhile;
 	[SYSTEM_STATUS_TABLE + 2] = [SYSTEM_STATUS_TABLE + 2] - 1; 
 	[SYSTEM_STATUS_TABLE + 3] = [SYSTEM_STATUS_TABLE + 3] - 1;
@@ -23,6 +25,7 @@ if (functionNum == 1) then			//Get Free Page
 		endif;
 		counter = counter + 1;
 	endwhile;
+	print("Mod2-28");
 endif;
 if (functionNum == 2) then			//Release Page	
 	alias PageNum R2;

@@ -7,6 +7,7 @@ if (functionNum == 1) then		//Get pcb entry
 		if ([PROCESS_TABLE + (counterpid * 16) + 4] == TERMINATED) then
 			R0 = counterpid;		//return value
 			[PROCESS_TABLE + (counterpid * 16) + 1] = counterpid;
+			[PROCESS_TABLE + (counterpid * 16) + 4] = ALLOCATED;
 			[PROCESS_TABLE + (counterpid * 16) + 14] = PAGE_TABLE_BASE + 20 * counterpid;
 			[PROCESS_TABLE + (counterpid * 16) + 15] = 10;
 			return;

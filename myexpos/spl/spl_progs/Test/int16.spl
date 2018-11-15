@@ -1,18 +1,12 @@
 [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13] = SP;
-alias userSP R0;
-userSP=SP;
+alias userSP R1;
+userSP = SP;
 SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11]*512 - 1;
-alias PhysicalPageNum R2;							//Extracting arguement 
-alias offset R3;
-alias CallNumAdd R4;
-PhysicalPageNum = [PTBR + 2 * ((userSP - 5)/ 512)];
-offset = (userSP - 5) % 512;
-CallNumAdd = (PhysicalPageNum * 512) + offset;
-alias SyscallNumber R5;
-SyscallNumber = [CallNumAdd];
-alias username R1;
+alias SyscallNumber R3;
+SyscallNumber = [[PTBR + 2 * ((userSP - 5)/ 512)] * 512 + (userSP - 5) % 512];
+alias username R4;
 username = [([PTBR + 2 * ((userSP - 4) / 512)] * 512) + ((userSP - 4) % 512)];
-alias password R2;
+alias password R5;
 password = [([PTBR + 2 * ((userSP - 3) / 512)] * 512) + ((userSP - 3) % 512)];
 encrypt password;
 alias returnaddress R15;
@@ -139,6 +133,6 @@ if (SyscallNumber == 26) then				//Getuid
 	[returnaddress] = -1;
 endif;
 lb:
-[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 0;
-SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13];
-ireturn;
+	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 0;
+	SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13];
+	ireturn;

@@ -1,0 +1,141 @@
+/////////////File Manager
+alias functionNum R1;
+alias toRet R8;
+if (functionNum == 2 || functionNum == 1) then  // buffer read or buffer write (returns nothing)
+	alias bnumber R2;
+	alias offset R3;
+	alias memoryAddress R4;  // this is word in case of buffer write
+	alias bufferIndex R5;
+	bufferIndex = (bnumber) % 4;
+	multipush (R1, R2, R3, R4, R5);  // calling acquire buffer
+	R1 = 1;
+	R2 = bufferIndex;
+	R3 = [SYSTEM_STATUS_TABLE + 1];
+	call MOD_0;
+	multipop (R1, R2, R3, R4, R5);
+	if ([BUFFER_TABLE + bufferIndex * 4] != bnumber) then
+		if ([BUFFER_TABLE + bufferIndex * 4 + 1] == 1) then  // i.e. contents are dirty.
+			multipush (R1, R2, R3, R4, R5);  // calling disk store
+			R1 = 1;
+			R2 = [SYSTEM_STATUS_TABLE + 1];
+			R3 = 71 + bufferIndex;
+			R4 = [BUFFER_TABLE + bufferIndex * 4];
+			call MOD_4;
+			multipop (R1, R2, R3, R4, R5);
+			[BUFFER_TABLE + bufferIndex * 4 + 1] = 0;
+		endif;
+		multipush (R1, R2, R3, R4, R5);  // calling disk load
+		R4 = bnumber;
+		R1 = 2;
+		R2 = [SYSTEM_STATUS_TABLE + 1];
+		R3 = 71 + bufferIndex;
+		call MOD_4;
+		multipop (R1, R2, R3, R4, R5);
+		[BUFFER_TABLE + bufferIndex * 4] = bnumber;	  // update the entry
+	endif;
+	if (functionNum == 1) then
+		[(71 + bufferIndex) * 512 + offset] = memoryAddress;
+		[BUFFER_TABLE + bufferIndex * 4 + 1] = 1; // marking the buffer as dirty.
+	else
+		[memoryAddress] = [(71 + bufferIndex) * 512 + offset];
+	endif;
+	R1 = 2;  // calling release buffer.
+	R2 = bufferIndex;
+	R3 = [SYSTEM_STATUS_TABLE + 1];
+	call MOD_0;
+	goto label1;
+endif;
+if (functionNum == 3) then  // open
+	alias filename R2;
+	alias cnter R3;
+	cnter = 0;
+	alias at R4;
+	alias found R5;
+	found = -1;
+	alias typ R6;
+	while (cnter < 60) do  // finding inode table index of the file
+		at = [INODE_TABLE + (cnter * 16) + 1];
+		typ = [INODE_TABLE + (cnter * 16)];
+		if (at == filename && typ != EXEC) then
+			found = cnter;
+			break;
+		endif;
+		cnter = cnter + 1;
+	endwhile;
+	if (found == -1) then
+		R0 = -1;
+	else
+		multipush (R2, R5);  // acquire inode
+		R1 = 4;
+		R2 = found;
+		R3 = [SYSTEM_STATUS_TABLE + 1];
+		call MOD_0;  // i need filename, found.
+		multipop (R2, R5);
+		if (R0 < 0) then
+			toRet = R0;
+		else
+			alias fileTableIndex R7;  // find free entry in the open file table. Read about it here: http://exposnitc.github.io/os_design-files/mem_ds.html#file_table
+			fileTableIndex = -1;
+			cnter = 0;
+			while (cnter < 32) do
+				if ([OPEN_FILE_TABLE + cnter * 4] == -1) then
+					fileTableIndex = cnter;
+					break;
+				endif;
+				cnter = cnter + 1;
+			endwhile;
+			if (fileTableIndex == -1) then
+				R1 = 5;  // release inode.
+				R2 = found;
+				R3 = [SYSTEM_STATUS_TABLE + 1];
+				call MOD_0;
+				toRet = -2;
+			else
+				if (filename == "root") then
+					[OPEN_FILE_TABLE + fileTableIndex * 4] = INODE_ROOT;
+				else
+					if ([FILE_STATUS_TABLE + found * 4 + 1] == -1) then
+						[FILE_STATUS_TABLE + found * 4 + 1] = 1;  // file open count
+					else
+						[FILE_STATUS_TABLE + found * 4 + 1] = [FILE_STATUS_TABLE + found * 4 + 1] + 1;
+					endif;
+					[OPEN_FILE_TABLE + fileTableIndex * 4] = found;  // setting inode index
+				endif;
+				[OPEN_FILE_TABLE + fileTableIndex * 4 + 1] = 1;  // open instance count
+				[OPEN_FILE_TABLE + fileTableIndex * 4 + 2] = 0;  // lseek
+				multipush (R7);  // clearly we just need filetableindex.
+				R1 = 5;  // release inode
+				R2 = found;
+				R3 = [SYSTEM_STATUS_TABLE + 1];
+				call MOD_0;
+				multipop (R7);
+				toRet = fileTableIndex;
+			endif;
+		endif;
+	endif;
+	goto label1;
+endif;
+if (functionNum == 4) then  // close function
+	alias fileTableIndex R2;
+	alias inodeIndex R3;
+	inodeIndex = [OPEN_FILE_TABLE + fileTableIndex * 4];
+	[OPEN_FILE_TABLE + fileTableIndex * 4 + 1] = [OPEN_FILE_TABLE + fileTableIndex * 4 + 1] - 1;  // decrementing the open instance count
+	if ([OPEN_FILE_TABLE + fileTableIndex * 4 + 1] == 0) then
+		alias cnter R4;
+		cnter = 0;
+		while (cnter < 4) do
+			[OPEN_FILE_TABLE + fileTableIndex * 4 + cnter] = -1;  // invalidating all entries
+			cnter = cnter + 1;
+		endwhile;
+		if (inodeIndex != INODE_ROOT) then
+			[FILE_STATUS_TABLE + inodeIndex * 4 + 1] = [FILE_STATUS_TABLE + inodeIndex * 4 + 1] - 1;  // decrementing file open count
+			if ([FILE_STATUS_TABLE + inodeIndex * 4 + 1] == 0) then
+				[FILE_STATUS_TABLE + inodeIndex * 4 + 1] = -1;
+			endif;
+		endif;
+	endif;
+	goto label1;
+endif;
+label1:
+	R0 = toRet;
+	return;

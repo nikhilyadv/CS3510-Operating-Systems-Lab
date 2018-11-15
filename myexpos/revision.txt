@@ -1,0 +1,56 @@
+Stage - 1
+	Just installation
+Stage - 2
+	Disk has 512 blocks, each capable of storing 512 words. 1 word is 16 characters.
+	There are three types of eXpFS files - the root, data files and executable files.
+
+	The eXpFS format specifies that each data/executable file can span across at most four data blocks, and that the index to these blocks along with the name and the size of the file must be stored in a pre-define area of the disk called the Inode table.
+	The Inode table is stored in the disk and has an entry for each file present in the disk.
+	Each Inode table entry stores the name, size, type and data block numbers of a file stored in the disk.
+	Entries in inode and root table shoulde match.
+	
+	Two contiguous memory words are necessary to store each XSM instruction.
+	Registers and Ports -
+		The XSM architecture maintains 29 registers, each capable of storing a word.
+				Unprivileged - R0-R19, BP, SP, IP
+
+Stage - 3
+	ROM is stored on the first page of memory and is hard coded to load page 1 and jmp to 512 (page 1).
+	Power on -> privileged mode -> register initialized to zero -> fetch-execute cycle.
+	
+Stage - 4
+	Basic SPL.
+
+Stage - 5
+	Use help command in debug mode
+
+Stage - 6
+		
+Stage - 7
+	Application Binary Interface (ABI)
+		An XEXE executable file in eXpOS consists of two parts:
+			1. Header
+			2. Code
+		The first eight words of an executable file are reserved for the header which describes the features of file. The structure of the header is :
+		XMAGIC - Entry point - Text Size - Data Size - Heap Size - Stack size - Library Flag - Unused
+
+Stage - 8
+	Timer -> (--timer 2 means that after every instrucion it will give timer)
+
+Stage - 9
+	Kernel stack used to store contents of registers when interupt occurs.
+	Backup and Restore instructions.
+	Need to store its value in process table.
+	user stack stores IP+2 and then user mode is changed to kernel mode and then control is transfered to interrut service routine or exception handler, which in turns switches from user stack to kernel stack, saves the values of current machine register in kernel stack and then run interupt cod. After completing that it restores value of machine register,set the value of stack pointer to the top of user stack. Finally transfer control back to user process.
+	
+
+
+Stage - 20
+	Fork system call
+	child and parent share code and heap regions of the address space(the child will be allocated with 2 new stack pages and a new user area page).
+	Contents of pre-process resource table(last 16(8*2) entries of user area page) in the user are page of parent are copied to the child and the kernel stack of the child is empty.
+	ExpL compiler allocates local variables, global variables and arrays of primitive data types (int, string) of a process in the stack. Since the parent and child processes have different memory pages for the user stack, they resume after fork with separate private copies of these variables, with the same values. 
+	Since the Parent and child processes can concurrently access/modify the heap pages, they need support from the OS to synchronize access to the shared heap memory. eXpOS provides support for such synchronization through systems calls for semaphores and signal handling. These will be discussed in later stages. Even though, code and library pages are shared among parent and child processes, synchronization is not required for these pages as their access is read only.
+
+
+#########################################################################

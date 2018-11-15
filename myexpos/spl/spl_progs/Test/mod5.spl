@@ -1,9 +1,9 @@
 alias currentpid R0;
 currentpid = [SYSTEM_STATUS_TABLE + 1];
 multipush(BP);
-[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 12] = SP%512;
-[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 14] = PTBR;
-[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 15] = PTLR;
+[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 12] = SP%512;
+[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 14] = PTBR;
+[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 15] = PTLR;
 alias flag R1;
 alias pid R2;
 if ([SYSTEM_STATUS_TABLE + 5] != -1) then
@@ -26,8 +26,8 @@ else
 		pid = 1;
 		while (pid <= currentpid) do
 			if ([PROCESS_TABLE + pid * 16 + 6] == 0 && [PROCESS_TABLE + (pid * 16) + 4] == READY || [PROCESS_TABLE + (pid * 16) + 4] == CREATED) then
-			flag = 1;
-			break;
+				flag = 1;
+				break;
 		endif;
 		pid = pid + 1;
 		endwhile;

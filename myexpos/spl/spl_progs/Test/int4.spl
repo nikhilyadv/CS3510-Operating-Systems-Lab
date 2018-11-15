@@ -1,42 +1,16 @@
-//===========================================================================
-//	R0 - userSP
-//	R1 - Physical page number
-//	R2 - offset
-//	R3 - call num address
-//	R4 - syscall number
-//	R5 - file name
-//	R6 - file permission
-//	R7 - file index
-//	R8 - temp flag to check whether the file is present on the disk or not
-//	R9 - free slot in inode table
-//	R10 - physicalAddrRetVal
-//	R11 - INODE_TABLE + freeentry * 16;
-//	R12 - ROOT_FILE + freeentry * 8
-//	R13 - iterator
-// 	R14 - temp
-//	R15 - counter
-//===========================================================================
 [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13] = SP;
-alias userSP R0;
+alias userSP R1;
 userSP=SP;
-SP = [PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 11]*512 - 1;
-alias PhysicalPageNum R1;							//Extracting arguement 
-alias offset R2;
-alias CallNumAdd R3;
-PhysicalPageNum = [PTBR + 2 * ((userSP - 5)/ 512)];
-offset = (userSP - 5) % 512;
-CallNumAdd = (PhysicalPageNum * 512) + offset;
-alias SyscallNumber R4;
-SyscallNumber = [CallNumAdd];
+alias ret R2;
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11]*512 - 1;		//Extracting arguement 
+alias SyscallNumber R3;
+SyscallNumber = [[PTBR + 2 * ((userSP - 5)/ 512)] * 512 + (userSP - 5) % 512];
 //Both calls search inode table so it better to combine
-alias filename R5;
-PhysicalPageNum = [PTBR + 2 * ((userSP - 4)/ 512)];
-offset = (userSP - 4) % 512;
-CallNumAdd = (PhysicalPageNum * 512) + offset;
-filename = [CallNumAdd];
-alias fileindex R7;
-alias flag R8;
-alias freeentry R9;
+alias filename R4;
+filename = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
+alias fileindex R5;
+alias flag R6;
+alias freeentry R7;
 flag = 0;
 fileindex = 0;				//inode table page 59
 freeentry = -1;
@@ -51,112 +25,108 @@ while (fileindex < 60) do
 	fileindex = fileindex + 1;
 endwhile;
 //return address
-alias physicalAddrRetVal R10;
-physicalAddrRetVal = ([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512);
 if (SyscallNumber == 1) then			//Create
-	[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 1;
-	alias permission R6;
-	PhysicalPageNum = [PTBR + 2 * ((userSP - 3)/ 512)];
-	offset = (userSP - 3) % 512;
-	CallNumAdd = (PhysicalPageNum * 512) + offset;
-	permission = [CallNumAdd];
+	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 1;
+	alias permission R8;
+	permission = [[PTBR + 2 * ((userSP - 3)/ 512)] * 512 + (userSP - 3) % 512];
 	if (flag == 1) then
-		[physicalAddrRetVal] = -1;					//file present in disk
-	else
-		R11 = INODE_TABLE + freeentry * 16;
-		R12 = ROOT_FILE + freeentry * 8;
-		[R11 + 0] = DATA;
-		[R11 + 1] = filename;
-		[R11 + 2] = 0;
-		[R11 + 3] = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 3];
-		[R11 + 4] = permission;	
-		[R11 + 8] = -1;
-		[R11 + 9] = -1;
-		[R11 + 10] = -1;
-		[R11 + 11] = -1;
-		[R12 + 0] = filename;
-		[R12 + 1] = 0;
-		[R12 + 2] = DATA;
-		[R12 + 3] = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 3];
-		[R12 + 4] = permission;
-		[physicalAddrRetVal] = 0;				//Return value	
+		ret = 0;					//file present in disk
+		goto lb2;
 	endif;
+	if (freeentry == -1) then
+		ret = -1;					
+		goto lb2;
+	endif;
+	R11 = INODE_TABLE + freeentry * 16;
+	R12 = ROOT_FILE + freeentry * 8;
+	[R11 + 0] = DATA;
+	[R11 + 1] = filename;
+	[R11 + 2] = 0;
+	[R11 + 3] = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 3];
+	[R11 + 4] = permission;	
+	[R11 + 8] = -1;
+	[R11 + 9] = -1;
+	[R11 + 10] = -1;
+	[R11 + 11] = -1;
+	[R12 + 0] = filename;
+	[R12 + 1] = 0;
+	[R12 + 2] = DATA;
+	[R12 + 3] = [USER_TABLE + 2*[R11 + 3]];
+	[R12 + 4] = permission;
+	ret = 0;				//Return value	
+	goto lb2;
 endif;
 if (SyscallNumber == 4) then				//delete
-	[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 4;
-	alias temp R14;
-	temp = 0;
+	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 4;
 	if (flag == 0) then
-		[physicalAddrRetVal] = 0;
-	else
-		R11 = INODE_TABLE + fileindex * 16;
-		R12 = ROOT_FILE + fileindex * 8;
-
-		if ([R11 + 0] != DATA) then
-				[physicalAddrRetVal] = -1;
-		else
-			if ([R11 + 4] == 0) then			//if exclusive
-				if ([PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 3] != 1 && [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 3] != [R11 + 3]) then					//root abstract here correct it later
-					[physicalAddrRetVal] = -1;
-					temp = -1;
-				endif;
-			endif;
-			if (temp != -1) then
-				multipush(R0,R3,R4,R5,R6,R7,R10,R11,R12,R14);
-				R1 = 4;											//acquire inode
-				R2 = fileindex;
-				R3 = [SYSTEM_STATUS_TABLE + 1];
-				call MOD_0;
-				multipop(R0,R3,R4,R5,R6,R7,R10,R11,R12,R14);
-				if(R0 != -1) then								//lock accquired
-					if ([FILE_STATUS_TABLE + fileindex * 4 + 1] != -1) then
-						[physicalAddrRetVal] = -2;
-						multipush(R0,R3,R4,R5,R6,R7,R10,R11,R12,R14);		//release
-						R1 = 5;											//release inode
-						R2 = fileindex;
-						R3 = [SYSTEM_STATUS_TABLE + 1];						
-						call MOD_0;
-						multipop(R0,R3,R4,R5,R6,R7,R10,R11,R12,R14);
-					else
-						alias counter R15;
-						alias iter R13;
-						counter = 8;
-						while (counter < 12) do
-							if ([R11 + counter] != -1) then
-								iter = 0;
-								while (iter < 4) do
-									if ([BUFFER_TABLE + iter * 4 + 0] == [R11 + counter] && [BUFFER_TABLE + iter * 4 + 1] == 1) then
-										[BUFFER_TABLE + iter * 4 + 1] = 0;			//reset the dirty bit
-									endif;
-									iter = iter + 1;
-								endwhile;
-								multipush(R0,R3,R4,R5,R6,R7,R10,R11,R12,R13,R14,R15);	
-								R1 = 4;											//release block
-								R2 = [R11 + counter];
-								R3 = [SYSTEM_STATUS_TABLE + 1];						
-								call MOD_2;
-								multipop(R0,R3,R4,R5,R6,R7,R10,R11,R12,R13,R14,R15);
-							endif;
-							[R11 + counter] = -1;
-							counter = counter + 1;
-						endwhile;
-						[R11 + 1] = -1;			//invalidate inode entry
-						[R11 + 2] = -2;
-						[R12 + 0] = -1;			//invalidate root entry
-						[R12 + 1] = -1;
-						multipush(R0,R3,R4,R5,R6,R7,R10,R11,R12,R13,R14,R15);		//release
-						R1 = 5;											//release inode
-						R2 = fileindex;
-						R3 = [SYSTEM_STATUS_TABLE + 1];						
-						call MOD_0;
-						multipop(R0,R3,R4,R5,R6,R7,R10,R11,R12,R13,R14,R15);
-						[physicalAddrRetVal] = 0;
-					endif;
-				endif;
-			endif;
+		ret = 0;
+		goto lb2;
+	endif;
+	R11 = INODE_TABLE + fileindex * 16;
+	R12 = ROOT_FILE + fileindex * 8;
+	if ([R11 + 0] != DATA) then
+		ret = -1;
+		goto lb2;
+	endif;
+	if ([R11 + 4] == 0) then			//if exclusive
+		if ([PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 3] != 1 && [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 3] != [R11 + 3]) then					//root abstract here correct it later
+			ret = -1;
+			goto lb2;
 		endif;
 	endif;
+	multipush(R1,R2,R3,R4,R5,R6,R7,R11,R12);
+	R1 = 4;											//acquire inode
+	R2 = fileindex;
+	R3 = [SYSTEM_STATUS_TABLE + 1];
+	call MOD_0;
+	multipop(R1,R2,R3,R4,R5,R6,R7,R11,R12);
+	if(R0 != -1) then								//lock accquired
+		if ([FILE_STATUS_TABLE + fileindex * 4 + 1] != -1) then
+			ret = -2;
+			goto lb1;
+		else
+			alias counter R15;
+			alias iter R13;
+			counter = 8;
+			while (counter < 12) do
+				if ([R11 + counter] != -1) then
+					iter = 0;
+					while (iter < 4) do
+						if ([BUFFER_TABLE + iter * 4 + 0] == [R11 + counter] && [BUFFER_TABLE + iter * 4 + 1] == 1) then
+							[BUFFER_TABLE + iter * 4 + 1] = 0;			//reset the dirty bit
+						endif;
+						iter = iter + 1;
+					endwhile;
+					multipush(R1,R2,R3,R4,R5,R6,R7,R11,R12,R13,R15);	
+					R1 = 4;											//release block
+					R2 = [R11 + counter];
+					R3 = [SYSTEM_STATUS_TABLE + 1];						
+					call MOD_2;
+					multipop(R1,R2,R3,R4,R5,R6,R7,R11,R12,R13,R15);
+				endif;
+				[R11 + counter] = -1;
+				counter = counter + 1;
+			endwhile;
+			[R11 + 1] = -1;			//invalidate inode entry
+			[R11 + 2] = -1;
+			[R12 + 0] = -1;			//invalidate root entry
+			[R12 + 1] = -1;
+			ret = 0;
+			goto lb1;
+		endif;
+		lb1:
+			multipush(R1,R2,R3,R4,R5,R6,R7,R11,R12);		//release
+			R1 = 5;											//release inode
+			R2 = fileindex;
+			R3 = [SYSTEM_STATUS_TABLE + 1];						
+			call MOD_0;
+			multipop(R1,R2,R3,R4,R5,R6,R7,R11,R12);
+	endif;
 endif;
-SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13];
-[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 0;
-ireturn;
+lb2:
+	alias physicalAddrRetVal R10;
+	physicalAddrRetVal = ([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512);
+	[physicalAddrRetVal] = ret;
+	SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13];
+	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 0;
+	ireturn;

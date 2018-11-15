@@ -1,0 +1,169 @@
+// Assumptions: Never use R0 - R4. As they'll be reserved for module calls. No need to save context of other registers as they are saved by the respective modules.
+// Create and Delete System Calls.
+// When a file is created by a process using the Create system call, the process can set its permission to exclusive(value = 0)/open-access(value = 1), to restrict access permissions. When a file is created with it's permission set to exclusive, write and delete system calls to that file will fail if executed by any user other than the owner of the file or the root. Open-access data files have no such restrictions. The root can modify/delete any data file (but not the root file or executable files) irrespective of the permissions. Kernel processes (Idle and Init/Login) have unrestricted access to all system calls. The root file has default userid 0 (kernel) and permission exclusive (value = 0).
+alias userSP R5;
+userSP = SP;
+[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13] = SP;  // saving user stack value
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;  // setting up kernal stack
+alias syscallNumber R6;
+syscallNumber = [[PTBR + 2 * ((userSP - 5)/ 512)] * 512 + (userSP - 5) % 512];
+alias toRet R7;
+toRet = 0; // sanity :)
+if (syscallNumber == 1) then  // Create system call
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 1;  // setting mode
+	alias filename R8;
+	filename = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
+	alias permission R9;
+	permission = [[PTBR + 2 * ((userSP - 3)/ 512)] * 512 + (userSP - 3) % 512];
+	alias cnter R10;
+	cnter = 0;
+	alias at R11;
+	alias typ R12;
+	alias found R13;
+	found = -1;
+	while (cnter < 60) do  // checking if the file already exists
+		at = [INODE_TABLE + (cnter * 16) + 1];
+		typ = [INODE_TABLE + (cnter * 16)];
+		if (at == filename && typ == DATA) then
+			found = cnter;
+			break;
+		endif;
+		cnter = cnter + 1;
+	endwhile;
+	if (found != -1) then  // already exists (success)
+		toRet = 0;
+	else
+		cnter = 0;
+		while (cnter < 60) do  // getting free entry
+			at = [INODE_TABLE + (cnter * 16) + 1];
+			if (at == -1) then
+				found = cnter;
+				break;
+			endif;
+			cnter = cnter + 1;
+		endwhile;
+		if (found == -1) then  // memory is full
+			toRet = -1;
+		else
+			alias f16 R14;
+			alias f8 R15;
+			f16 = found * 16;
+			f8 = found * 8;
+			[INODE_TABLE + f16 + 1] = filename;
+			[INODE_TABLE + f16 + 2] = 0;  // filesize
+			[INODE_TABLE + f16] = DATA;
+			cnter = 8;  // initializing data block numbers to -1 as no disk blocks are allocated to the file.
+			while (cnter < 12) do
+				[INODE_TABLE + f16 + cnter] = -1;
+				cnter = cnter + 1;
+			endwhile;
+			[INODE_TABLE + f16 + 3] = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 3];  // setting userid to the userid of the process. Hence, the user executing the Create system call becomes the owner of the file. 
+			[INODE_TABLE + f16 + 4] = permission;
+			////////// Setting ROOT file entries
+			[ROOT_FILE + f8] = filename;  // filename
+			[ROOT_FILE + f8 + 1] = 0;  // filesize
+			[ROOT_FILE + f8 + 2] = DATA;  // filetype
+			[ROOT_FILE + f8 + 3] = [USER_TABLE + [INODE_TABLE + f16 + 3] * 2];  // setting the username. 
+			// User table consists of MAX_USER_NUM = 16 entries. All unused entries are set to -1. Each entry is of 2 words (username and encrypted password of the user). The User table entry for two special users - the kernel and root are set at the time of disk formatting. The userid assigned to a user is the index of the curresponding entry in the user table. The userid of kernel is 0 and the root is 1. The inode table entry of a file contains the userid of the owner of the file. The password field for kernel is empty because kernel is a non - loginable user. 
+			[ROOT_FILE + f8 + 4] = permission;
+			toRet = 0;
+		endif;	
+	endif;
+endif;
+if (syscallNumber == 4) then  // Delete system call
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 4;  // setting mode
+	alias filename R8;
+	filename = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
+	alias cnter R9;
+	cnter = 0;
+	alias at R10;
+	alias found R11;
+	found = -1;
+	while (cnter < 60) do  // checking if the file already exists
+		at = [INODE_TABLE + (cnter * 16) + 1];
+		if (at == filename ) then
+			found = cnter;
+			break;
+		endif;
+		cnter = cnter + 1;
+	endwhile;
+	if (found == -1) then  // does not exist (success)
+		toRet = 0;
+	else
+		alias f16 R12;
+		f16 = found * 16;
+		if ([INODE_TABLE + f16] != DATA) then
+			toRet = -1;
+		else
+			if ([INODE_TABLE + f16 + 4] == 0) then  // permission is exclusive
+			// if the current user is not root and the current user doesnot own the file then return -1.
+				if ([INODE_TABLE + f16 + 3] != [PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 3] && [PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 3] != 0) then
+					toRet = -1;
+				endif;
+			endif;
+			if (toRet != -1) then
+				R1 = 4;
+				R2 = found;
+				R3 = [SYSTEM_STATUS_TABLE + 1];
+				multipush (R5, R11, R12);  // requires found, userSP, f16...
+				call MOD_0;  // acquire inode lock
+				// what if acquire inode returns -1, in that case we should -1, in that case we should return success but they don't mention it.
+				multipop (R5, R11, R12);  // requires found, userSP, f16...
+				// Check if the the file open count is -1 in the  File Status Table . If not, release the lock and return -2. File is open, cannot be deleted
+				// A file can not be deleted if it is currently opened by one or more processes.
+				// the second field in an entry of file status table tells about FILE OPEN COUNT which specifies the number of open instances of the file. This field is set to -1 if there are no open instances of the file in the system.
+				// So filestatus table just contains info about locking pid and file open count.
+				if ([FILE_STATUS_TABLE + found * 4 + 1] != -1) then
+					R1 = 5;  // release lock
+					R2 = found;
+					R3 = [SYSTEM_STATUS_TABLE + 1];
+					multipush (R5);  // only userSP is required...
+					call MOD_0;
+					multipop (R5);
+					toRet = -2;
+				endif;
+				if (toRet != -2) then
+					cnter = 8;
+					// ImpNote: Read about buffer table from here: http://exposnitc.github.io/os_design-files/mem_ds.html#buffer_table
+					// If any of the disk blocks of the deleted file are in the buffer cache, and if the buffer page is marked dirty, the OS will write back the buffer page into the disk block when another disk block needs to be brought into the same buffer page. However, such write back is unnecessary if the file is deleted (and can even be catastrophic- why?). Hence, Delete system call must clear the dirty bit (in the buffer table) of all the buffered disk blocks of the file. 
+					while (cnter < 12) do
+						if ([INODE_TABLE + f16 + cnter] != -1) then
+							alias bufferno R13;
+							bufferno = [INODE_TABLE + f16 + cnter] % 4;
+							// If the disk block is loaded into a buffer, and the DIRTY BIT is set, reset the dirty bit. 
+							if (([BUFFER_TABLE + bufferno * 4] == [INODE_TABLE + f16 + cnter]) && [BUFFER_TABLE + bufferno * 4 + 1] == 1)  then
+								[BUFFER_TABLE + bufferno * 4 + 1] = 0;	
+							endif;
+							R1 = 4;
+							R2 = [INODE_TABLE + f16 + cnter];
+							R3 = [SYSTEM_STATUS_TABLE + 1];
+							call MOD_2;  // release disk block
+						endif;
+						cnter = cnter + 1;
+					endwhile;
+					cnter = 0;
+					while (cnter < 16) do  // invalidate inode
+						[INODE_TABLE + f16 + cnter] = -1;
+						cnter = cnter + 1;
+					endwhile;
+					cnter = 0;
+					while (cnter < 8) do  // invalidate root
+						[ROOT_FILE + (found * 8) + cnter] = -1; 
+						cnter = cnter + 1;
+					endwhile;
+					R1 = 5;
+					R2 = found;
+					R3 = [SYSTEM_STATUS_TABLE + 1];
+					multipush (R5);
+					call MOD_0;  // release lock
+					multipop (R5);
+					toRet = 0;
+				endif;
+			endif;
+		endif;
+	endif;
+endif;
+[([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512)] = toRet;
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;	
+SP = userSP;
+ireturn;

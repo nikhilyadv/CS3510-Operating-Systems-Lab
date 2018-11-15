@@ -1,0 +1,248 @@
+/////////////Pager Module
+alias functionNum R1;
+alias currentPID R2;
+if (functionNum == 1) then  // Swap Out
+	[SYSTEM_STATUS_TABLE + 5] = currentPID;  // setting paging process field
+	alias cnter R3;
+	cnter = 3;   // process to swap out should not be init, login or shell.
+	alias found R4;
+	found = -1;
+	while (cnter < 16) do
+		if ([PROCESS_TABLE + cnter * 16 + 4] == WAIT_PROCESS) then
+			found = cnter;
+			break;
+		endif;
+		cnter = cnter + 1;
+	endwhile;
+	if (found == -1) then
+		cnter = 3;
+		while (cnter < 16) do
+			if ([PROCESS_TABLE + cnter * 16 + 4] == WAIT_TERMINAL) then
+				found = cnter;
+				break;
+			endif;
+			cnter = cnter + 1;
+		endwhile;
+	endif;
+	if (found == -1) then
+		alias mx R5;
+		mx = -1;
+		cnter = 3;
+		while (cnter < 16) do
+			alias processEntry R6;
+			processEntry = PROCESS_TABLE + cnter * 16;
+			if ([processEntry + 4] != RUNNING && [processEntry + 6] != 1 && [processEntry] > mx) then   // non running and non swapped...
+				mx = [processEntry];
+				found = cnter;
+			endif;
+			cnter = cnter + 1;
+		endwhile;
+	endif;
+	[PROCESS_TABLE + found * 16] = 0;  // setting tick to 0.
+	cnter = 0;
+	alias ptbr R9;
+	ptbr = PAGE_TABLE_BASE + found * 20;
+	while (cnter < 4) do  // removing code pages
+		alias temp_ R6;
+		temp_ = ptbr + cnter * 2 + 8;
+		if ([temp_] != -1) then
+			R1 = 2;
+			R2 = [temp_];
+			call MOD_2;
+			[temp_] = -1;
+			[temp_ + 1] = "0000";
+		endif;
+		cnter = cnter + 1;
+	endwhile;
+	cnter = ptbr + 4;
+	alias cnter2 R7;
+	cnter2 = 0;
+	alias dtableEntry R5;
+	dtableEntry = DISK_MAP_TABLE + found * 10;	
+	while (cnter < ptbr + 8) do  // invalidate non shared and valid heap pages
+		if ([cnter] != -1 && [MEMORY_FREE_LIST + [cnter]] == 1) then
+			R1 = 6;  // calling get_swap_block
+			R2 = [SYSTEM_STATUS_TABLE + 1];
+			call MOD_2;
+			[dtableEntry + cnter2  + 2] = R0;  // storing diskblock no.
+			// calling disk store
+			R1 = 1;
+			R3 = [cnter];
+			R4 = R0;
+			call MOD_4;
+			R1 = 2;
+			R2 = [cnter];
+			call MOD_2;
+			[cnter] = -1;
+			[cnter + 1] = "0000";
+		endif;
+		cnter = cnter + 2;
+		cnter2 = cnter2 + 1;
+	endwhile;
+	alias b1 R6;
+	alias b2 R7;
+	alias b3 R8;
+	R1 = 6;
+	call MOD_2;
+	R6 = R0;
+	R1 = 6;
+	call MOD_2;
+	R7 = R0;
+	R1 = 6;
+	call MOD_2;
+	R8 = R0;
+	if ([ptbr + 16] != -1) then  // calling disk store for stack page
+		R1 = 1;
+		R2 = [SYSTEM_STATUS_TABLE + 1];
+		R3 = [ptbr + 16];
+		R4 = b1;
+		call MOD_4;
+		R1 = 2;  // call release page
+		R2 = [ptbr + 16];
+		call MOD_2;
+		[ptbr + 16] = -1;
+		[ptbr + 17] = "0000";
+		[dtableEntry + 8] = b1;
+	endif;
+	if ([ptbr + 18] != -1) then  // calling disk store for second stack page
+		R1 = 1;
+		R2 = [SYSTEM_STATUS_TABLE + 1];
+		R3 = [ptbr + 16];
+		R4 = b2;
+		call MOD_4;
+		R1 = 2;  // call release page
+		R2 = [ptbr + 18];
+		call MOD_2;
+		[ptbr + 18] = -1;
+		[ptbr + 19] = "0000";
+		[dtableEntry + 9] = b2;
+	endif;	
+	R1 = 1;  // disk store for user area page
+	R2 = [SYSTEM_STATUS_TABLE + 1];
+	R3 = [PROCESS_TABLE + found * 16 + 11];
+	R4 = b3;
+	call MOD_4;
+	R1 = 2;  // call release page
+	R2 = R3;
+	call MOD_2;
+	[dtableEntry] = b3;
+	[PROCESS_TABLE + found * 16 + 11] = -1;  // user area page
+	[PROCESS_TABLE + found * 16 + 6] = 1;  // swap flag
+	[SYSTEM_STATUS_TABLE + 4] = [SYSTEM_STATUS_TABLE + 4] + 1; // incrementing the swap count
+	[SYSTEM_STATUS_TABLE + 5] = -1;
+	return;
+endif;
+if (functionNum == 2) then  // Swap in
+	alias cnter R3;
+	cnter = 3;
+	alias found R4;
+	while (cnter < 16) do
+		alias pentry R5;
+		pentry = PROCESS_TABLE + cnter * 16;
+		if ([pentry + 4] == WAIT_MEM) then	
+			found = -1;
+			break;
+		endif;
+		if ([pentry + 6] == 1 && [pentry + 4] == READY) then
+			found = cnter;
+		endif;
+		cnter = cnter + 1;
+	endwhile;
+	if (found == -1) then
+		return;
+	endif;
+	[SYSTEM_STATUS_TABLE + 5] = currentPID;  // setting paging process field
+	cnter = 3;   
+	found = -1;
+	alias mx R5;
+	mx = -1;
+	while (cnter < 16) do
+		alias pentry R6;
+		pentry = PROCESS_TABLE + cnter * 16;
+		if ([pentry + 6] == 1 && [pentry + 4] == READY && [pentry] > mx) then
+			mx = [pentry];
+			found = cnter;
+		endif;
+		cnter = cnter + 1;
+	endwhile;
+	alias pentry R5;
+	pentry = PROCESS_TABLE + found * 16;
+	[pentry] = 0;
+	cnter = 0;
+	alias dentry R6;
+	dentry = DISK_MAP_TABLE + found * 10;
+	alias ptbr R7;
+	ptbr = PAGE_TABLE_BASE + found * 20;
+	while (cnter < 2) do  // get back heap
+		if ([dentry + 2 + cnter] != -1) then
+			R1 = 1;
+			call MOD_2;
+			[ptbr + 4 + cnter * 2] = R0;
+			[ptbr + 4 + cnter * 2 + 1] = "0110";
+			R1 = 2;  // calling disk load
+			R2 = [SYSTEM_STATUS_TABLE + 1];
+			R3 = R0;
+			R4 = [dentry + 2 + cnter];
+			call MOD_4;
+			R1 = 4;  // release the disk block
+			R3 = R2;
+			R2 = [dentry + 2 + cnter];
+			call MOD_2;
+			[dentry + 2 + cnter] = -1;  // can invalidate now
+		endif;
+		cnter = cnter + 1;
+	endwhile;
+	alias p1 R8;
+	alias p2 R9;
+	alias p3 R10;
+	R1 = 1;
+	call MOD_2;
+	R1 = 1;
+	p1 = R0;
+	call MOD_2;
+	R1 = 1;
+	p2 = R0;
+	call MOD_2;
+	p3 = R0;
+	cnter = 0;
+	while (cnter < 2) do
+		if ([dentry + 8 + cnter] != -1) then
+			R1 = 2;  // call disk load
+			R2 = [SYSTEM_STATUS_TABLE + 1];
+			if (cnter == 0) then
+				R3 = p1;
+			else
+				R3 = p2;
+			endif;
+			R4 = [dentry + 8 + cnter];
+			call MOD_4;
+			if (cnter == 0) then
+				[ptbr + 16] = p1;
+				[ptbr + 17] = "0110";
+			else
+				[ptbr + 18] = p2;	
+				[ptbr + 19] = "0110";
+			endif;
+			R1 = 4;  // release block
+			R3 = R2;
+			R2 = [dentry + 8 + cnter];
+			call MOD_2;
+			[dentry + 8 + cnter] = -1;
+		endif;
+	endwhile;
+	R1 = 2;  /// disk load
+	R2 = [SYSTEM_STATUS_TABLE + 1];
+	R3 = p3;
+	R4 = [dentry];
+	call MOD_4;
+	R1 = 4;  // release block
+	R3 = R2;
+	R2 = [dentry];
+	call MOD_2;
+	[dentry] = -1;
+	[pentry + 11] = p3;
+	[pentry + 6] = 0;  // swap flag
+	[SYSTEM_STATUS_TABLE + 4] = [SYSTEM_STATUS_TABLE + 4] - 1; //  decrement the swap count
+	[SYSTEM_STATUS_TABLE + 5] = -1;
+	return;	
+endif;

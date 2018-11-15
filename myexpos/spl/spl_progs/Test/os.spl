@@ -1,7 +1,6 @@
-loadi(54,67);
+loadi(54,67);	//MOD 7
 loadi(55,68);	
-loadi(69,11);
-loadi(70,12);
+loadi(69,11);	//IDLE
 SP = (76*512-1);
 call MOD_7;
 PTBR = PAGE_TABLE_BASE;

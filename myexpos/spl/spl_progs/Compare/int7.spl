@@ -1,0 +1,111 @@
+// Always make register check in the end.
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 5;
+alias userSP R5;
+userSP = SP;
+[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13] = SP;
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;
+alias fileDesc R6;
+fileDesc = ([PTBR + 2 * ((userSP - 4)/ 512)] * 512) + (userSP - 4) % 512;
+fileDesc = [fileDesc];
+alias toRet R7;
+toRet = 0;  // sanity
+alias word R12;
+word = [[PTBR + 2 * ((userSP - 3) / 512)] * 512 + ((userSP - 3) % 512)];
+if (fileDesc == -2) then  // to write on terminal
+	multipush (R5, R7);
+	R1 = 3; // function number for terminal write
+	R2 = [SYSTEM_STATUS_TABLE + 1];
+	R3 = word;
+	call MOD_4;
+	multipop (R5, R7);
+	goto label1;  // return
+endif;
+if (fileDesc < 0 || fileDesc > 7) then
+	toRet = -1;
+	goto label1;
+endif;
+alias perProcess R8;
+perProcess = ([PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 11] + 1) * 512 - 16;
+perProcess = perProcess + 2 * fileDesc;
+if ([perProcess] != FILE) then
+	toRet = -1;
+	goto label1;
+endif;
+alias fileTableIndex R9;
+fileTableIndex = [perProcess + 1];
+alias inodeTableIndex R10;
+inodeTableIndex = [OPEN_FILE_TABLE + fileTableIndex * 4];
+if ([INODE_TABLE + inodeTableIndex * 16 + 3] != [PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 3] && [INODE_TABLE + inodeTableIndex * 16 + 4] == EXCLUSIVE) then   // userid doesn't match and permission is exclusive
+	toRet = -3;
+	goto label1;
+endif;
+R1 = 4;  // acquire inode
+R2 = inodeTableIndex;
+R3 = [SYSTEM_STATUS_TABLE + 1];
+multipush (R5, R7, R9, R10, R12);
+call MOD_0;
+multipop (R5, R7, R9, R10, R12); // we need toRet, userSP, fileTableIndex, inodeTableIndex, word.
+if (R0 < 0) then
+	toRet = -1;
+	goto label1;
+endif;
+alias lseek R11;
+lseek = [OPEN_FILE_TABLE + fileTableIndex * 4 + 2];
+if (lseek == MAX_FILE_SIZE) then // max file size of 2048
+	
+	R1 = 5;  // release inode
+	R2 = inodeTableIndex;
+	R3 = [SYSTEM_STATUS_TABLE + 1];
+	multipush (R5);
+	call MOD_0;
+	multipop (R5);
+	toRet = -2;
+	goto label1;
+endif;
+alias fileSize R13;	
+fileSize = [INODE_TABLE + inodeTableIndex * 16 + 2];
+if (lseek % 512 == 0 && lseek == fileSize) then
+	alias bnumber R14;    // allocate new block
+	R1 = 3;
+	call MOD_2;  // assumption, mod2 wont cause regs to get mod
+	bnumber = R0; 
+	if (bnumber < 0) then
+		
+		R1 = 5;  // release inode
+		R2 = inodeTableIndex;
+		R3 = [SYSTEM_STATUS_TABLE + 1];
+		multipush (R5);
+		call MOD_0;
+		multipop (R5);
+		toRet = -2;
+		goto label1;
+	endif; 
+	[INODE_TABLE + inodeTableIndex * 16 + 8 + (lseek / 512)] = bnumber;
+endif;
+alias bnumber R14;
+bnumber = INODE_TABLE + inodeTableIndex * 16 + 8;
+bnumber = bnumber + (lseek / 512);
+bnumber = [bnumber];  // our disk block number
+R1 = 1;  // calling buffered write
+R2 = bnumber;
+R3 = lseek % 512;
+R4 = word;
+multipush (R11, R13, R10, R9, R5, R7);  // we need lseek, fileSize, inodeTableIndex, fileTableIndex, userSP and toRet
+call MOD_3;
+multipop (R11, R13, R10, R9, R5, R7);
+if (lseek == fileSize) then  // increment file size
+	[INODE_TABLE + inodeTableIndex * 16 + 2] = [INODE_TABLE + inodeTableIndex * 16 + 2] + 1;
+	[ROOT_FILE + inodeTableIndex * 8 + 1] = [ROOT_FILE + inodeTableIndex * 8 + 1] + 1;
+endif;
+[OPEN_FILE_TABLE + fileTableIndex * 4 + 2] = [OPEN_FILE_TABLE + fileTableIndex * 4 + 2] + 1;  // increment lseek
+R1 = 5;  // release inode
+R2 = inodeTableIndex;
+R3 = [SYSTEM_STATUS_TABLE + 1];
+multipush (R5, R7);
+call MOD_0;
+multipop (R5, R7);
+label1:
+	[[PTBR + 2 * ((userSP - 1) / 512)] * 512 + ((userSP - 1) % 512)] = toRet;
+	SP = userSP;
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;
+	ireturn;

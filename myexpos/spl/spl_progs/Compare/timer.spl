@@ -1,0 +1,33 @@
+[PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13] = SP;
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;
+backup;
+if ([SYSTEM_STATUS_TABLE+1] != 0) then
+	if ([SYSTEM_STATUS_TABLE + 2] < MEM_LOW) then  // call swap out
+		R1 = 1;
+		R2 = [SYSTEM_STATUS_TABLE+1];
+		call MOD_6;
+	else
+		if ([SYSTEM_STATUS_TABLE + 2] > MEM_HIGH) then  // call swap in
+			R1 = 2;
+			R2 = [SYSTEM_STATUS_TABLE+1];
+			call MOD_6;
+		endif;
+	endif;
+endif;
+alias process_table_entry R1;
+process_table_entry = PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1] * 16;
+[process_table_entry + 4] = READY;  
+alias cnter R6;
+cnter = 0;
+while (cnter <= 15) do  // incrementing tick of non terminated processes
+	process_table_entry = PROCESS_TABLE + cnter * 16;
+	if ([process_table_entry + 4] != TERMINATED) then
+		[process_table_entry] = [process_table_entry] + 1;
+	endif;
+	cnter = cnter + 1;
+endwhile;
+// not doing multipush as it is not needed
+call MOD_5;
+restore;
+SP = [PROCESS_TABLE + ( [SYSTEM_STATUS_TABLE + 1] * 16) + 13];
+ireturn;

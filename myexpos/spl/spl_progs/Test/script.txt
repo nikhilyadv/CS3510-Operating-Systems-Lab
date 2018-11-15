@@ -35,14 +35,18 @@ cd ../expl
 ./expl samples/cat.expl
 ./expl samples/idle.expl
 ./expl samples/login.expl
-./expl samples/s27a5.expl
-./expl samples/m_sort.expl
-./expl samples/m_merge.expl
-./expl samples/m_store.expl
-./expl samples/s27a3.expl
-./expl samples/s27a33.expl
-./expl samples/msortc.expl
-./expl samples/msorts.expl
+./expl tests/even.expl
+./expl tests/fact.expl
+./expl tests/gcd.expl
+./expl tests/infy.expl
+./expl tests/numbers.expl
+./expl tests/odd.expl
+./expl tests/print.expl
+./expl tests/test1.expl
+./expl tests/test2.expl
+./expl tests/test3.expl
+./expl tests/test4.expl
+./expl tests/test5.expl
 cd ../xfs-interface
 ./xfs-interface
 fdisk
@@ -78,19 +82,22 @@ load --shell ../expl/samples/shell3.xsm
 load --idle ../expl/idle.xsm
 load --os ../spl/spl_progs/Test/os.xsm
 load --library ../expl/library.lib
-load --data ../sample.dat
-load --data ../numbers.dat
 load --exec ../expl/samples/ls.xsm
 load --exec ../expl/samples/cat.xsm
 load --exec ../expl/samples/rm.xsm
-load --exec ../expl/samples/s27a5.xsm
-load --exec ../expl/samples/m_sort.xsm
-load --exec ../expl/samples/m_merge.xsm
-load --exec ../expl/samples/m_store.xsm
-load --exec ../expl/samples/s27a3.xsm
-load --exec ../expl/samples/s27a33.xsm
-load --exec ../expl/samples/msortc.xsm
-load --exec ../expl/samples/msorts.xsm
+load --exec ../expl/tests/fact.xsm
+load --exec ../expl/tests/gcd.xsm
+load --exec ../expl/tests/infy.xsm
+load --exec ../expl/tests/numbers.xsm
+load --exec ../expl/tests/odd.xsm
+load --exec ../expl/tests/print.xsm
+load --exec ../expl/tests/test1.xsm
+load --exec ../expl/tests/test2.xsm
+load --exec ../expl/tests/test3.xsm
+load --exec ../expl/tests/test4.xsm
+load --exec ../expl/tests/test5.xsm
+load --data ../expl/tests/sample1.dat
+load --data ../expl/tests/sample2.dat
 exit
 cd ../xsm
-./xsm 
+./xsm --timer 1024

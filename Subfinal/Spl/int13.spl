@@ -1,0 +1,74 @@
+[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13] = SP;
+alias userSP R1;
+userSP = SP;
+alias ret R2;
+ret = 0;
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11]*512 - 1;
+alias SyscallNumber R3;
+SyscallNumber = [[PTBR + 2 * ((userSP - 5)/ 512)] * 512 + (userSP - 5) % 512];
+if (SyscallNumber == 17) then				//Semget
+	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 17;
+	alias perprocesstable R4;
+	alias counter R5;
+	alias flag R6;
+	ret = -1;
+	perprocesstable = ([PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11]) * 512 + (512 - 16);
+	flag = -1;
+	counter = 0;
+	while(counter < 16) do								//find a free entry in perprocesstable
+		if([perprocesstable + counter] == -1) then
+			flag = 1;
+			break;
+		endif;
+		counter = counter + 2;
+	endwhile;
+	if (flag == 1) then
+		multipush(R1,R2,R3,R4,R5,R6,R7,R8);
+		R1 = 6;
+		R2 = [SYSTEM_STATUS_TABLE + 1];
+		call MOD_0;
+		multipop(R1,R2,R3,R4,R5,R6,R7,R8);
+	endif;
+	if (R0 != -1) then
+		[perprocesstable + counter] = 1;				//Semaphore
+		[perprocesstable + counter + 1] = R0;			//storing the entry
+		ret = counter / 2; 								//return value
+	else if (flag == -1) then
+			ret = -1;
+		else
+			ret = -2; 
+		endif;
+	endif;
+	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 0;
+	alias physicalAddrRetVal R10;
+	physicalAddrRetVal = ([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512);
+	[physicalAddrRetVal] = ret;												//return value
+	SP = userSP;
+	ireturn;
+endif;
+if (SyscallNumber == 18) then				//Semrelease
+	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 18;
+	alias perprocesstable R4;
+	alias sdescriptor R5;
+	sdescriptor = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
+	perprocesstable = ([PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11]) * 512 + (512 - 16);
+	if (sdescriptor >= 0 && sdescriptor < 8 && [perprocesstable+2*sdescriptor] == 1) then
+		multipush(R1,R2,R3,R4,R5,R6,R7,R8);
+		R1 = 7;
+		R2 = [perprocesstable + sdescriptor + 1];
+		R3 = [SYSTEM_STATUS_TABLE + 1];
+		call MOD_0;
+		multipop(R1,R2,R3,R4,R5,R6,R7,R8);
+		[perprocesstable + 2*sdescriptor] = -1;				//invalidate
+		[perprocesstable + 2*sdescriptor + 1] = 0;
+		ret = 0;
+	else
+		ret = -1;
+	endif;
+	[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 0;
+	alias physicalAddrRetVal R10;
+	physicalAddrRetVal = ([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512);
+	[physicalAddrRetVal] = ret;												//return value
+	SP = userSP;
+	ireturn;
+endif;

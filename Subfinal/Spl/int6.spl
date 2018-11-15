@@ -1,0 +1,88 @@
+[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 9] = 7;
+alias userSP R1;
+userSP = SP;
+alias ret R2;
+[PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 13] = userSP;
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11]*512 - 1;
+alias fileDescriptor R3;
+fileDescriptor = [[PTBR + 2 * ((userSP - 4)/ 512)] * 512 + (userSP - 4) % 512];
+alias word R4;
+word = [[PTBR + 2 * ((userSP - 3) / 512)] * 512 + ((userSP - 3) % 512)];
+if (fileDescriptor == -1) then
+	multipush(R1,R2,R3,R4);
+	R1 = 4;					//Terminal Read
+	R2 = [SYSTEM_STATUS_TABLE + 1];		//pid
+	R3 = word;			//word to be read
+	call MOD_4;
+	multipop(R1,R2,R3,R4);
+	ret = 0;
+	goto lb2;
+else
+	if (fileDescriptor < 0 || fileDescriptor > 7) then
+		ret = -1;
+		goto lb2;
+	endif;
+	alias perprocesstable R5;
+	perprocesstable = ([PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11]) * 512 + (512 - 16);
+	if ([perprocesstable + 2 * fileDescriptor] != FILE) then
+		ret = -1;
+		goto lb2;
+	endif;
+	alias filetableindex R6;
+	alias inodetableindex R7;
+	filetableindex = [perprocesstable + 2 * fileDescriptor + 1];
+	inodetableindex = [OPEN_FILE_TABLE + 4 * filetableindex + 0];
+	multipush(R1,R2,R3,R4,R5,R6,R7);
+	R1 = 4;
+	R2 = inodetableindex;
+	R3 = [SYSTEM_STATUS_TABLE + 1];
+	call MOD_0;										//acquire inode
+	multipop(R1,R2,R3,R4,R5,R6,R7);
+	if (R0 != 0) then
+		ret = -1;
+		goto lb2;
+	endif;
+	alias lseek R8;
+	lseek = [OPEN_FILE_TABLE + 4 * filetableindex + 2];
+	if ([OPEN_FILE_TABLE + 4 * filetableindex] == INODE_ROOT) then
+		if (lseek == 480) then
+			ret = -2;
+			goto lb1;
+		endif;
+		[([PTBR + 2*(word/512)])*512 + (word%512)] = [ROOT_FILE + lseek];
+		[OPEN_FILE_TABLE + 4 * filetableindex + 2] = [OPEN_FILE_TABLE + 4 * filetableindex + 2] + 1;
+		ret = 0;
+		goto lb1;
+	else
+		if (lseek == [INODE_TABLE + 16 * inodetableindex + 2]) then
+			ret = -2;
+			goto lb1;
+		endif;
+		//lseek to address
+		R9 = lseek / 512;
+		multipush(R1,R2,R3,R4,R5,R6,R7,R8,R9);
+		R1 = 2;
+		R2 = [INODE_TABLE + 16 * inodetableindex + 8 + R9];
+		R3 = lseek % 512; 
+		R4 = word;
+		call MOD_3;
+		multipop(R1,R2,R3,R4,R5,R6,R7,R8,R9);
+		[OPEN_FILE_TABLE + 4 * filetableindex + 2] = [OPEN_FILE_TABLE + 4 * filetableindex + 2] + 1;
+		ret = 0;
+		goto lb1;
+	endif;
+	lb1:
+		multipush(R1,R2,R3,R4,R5,R6,R7,R8,R9);
+		R1 = 5;
+		R2 = inodetableindex;
+		R3 = [SYSTEM_STATUS_TABLE + 1];
+		call MOD_0;							//release inode
+		multipop(R1,R2,R3,R4,R5,R6,R7,R8,R9);
+endif;
+lb2:
+	alias physicalAddrRetVal R10;
+	physicalAddrRetVal = ([PTBR + 2 * ((userSP - 1) / 512)] * 512) + ((userSP - 1) % 512);
+	[physicalAddrRetVal] = ret;
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;
+	SP = userSP;
+	ireturn;
